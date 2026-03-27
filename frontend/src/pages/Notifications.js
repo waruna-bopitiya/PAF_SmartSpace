@@ -125,13 +125,21 @@ const Notifications = () => {
 
   return (
     <div className="notifications-container">
-      <div className="notifications-header">
-        <h1>Notifications</h1>
-        <div className="header-stats">
-          <span className="unread-badge">Unread: {unreadCount}</span>
+      <div className="notifications-header-card">
+        <div className="notifications-header">
+          <div>
+            <h1>Notifications</h1>
+            <p className="header-subtitle">Stay updated with bookings, tickets, and important system activity.</p>
+          </div>
+          <div className="header-stats">
+            <span className="unread-badge">Unread: {unreadCount}</span>
+          </div>
+        </div>
+
+        <div className="header-actions">
           {unreadCount > 0 && (
             <button
-              className="btn btn-sm btn-primary"
+              className="notif-btn notif-btn-primary"
               onClick={handleMarkAllAsRead}
             >
               Mark All as Read
@@ -139,7 +147,7 @@ const Notifications = () => {
           )}
           {notifications.length > 0 && (
             <button
-              className="btn btn-sm btn-danger"
+              className="notif-btn notif-btn-danger"
               onClick={handleDeleteAll}
             >
               Clear All
@@ -223,6 +231,7 @@ const Notifications = () => {
           ))
         ) : (
           <div className="no-notifications">
+            <span className="empty-icon">🔔</span>
             <p>No {filter === 'unread' ? 'unread' : ''} notifications</p>
           </div>
         )}
