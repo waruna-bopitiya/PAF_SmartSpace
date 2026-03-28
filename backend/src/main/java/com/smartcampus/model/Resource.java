@@ -122,6 +122,7 @@ public class Resource {
         }
     }
 
+    // Update the updatedAt timestamp on updates
     public void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
