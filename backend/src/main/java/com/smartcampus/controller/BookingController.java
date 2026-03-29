@@ -161,7 +161,7 @@ public class BookingController {
     /**
      * Approve booking
      * PUT /bookings/{id}/approve?approvedBy={userId}&reason={reason}
-     */
+     ****/
     @PutMapping("/{id}/approve")
     public ResponseEntity<?> approveBooking(@PathVariable String id,
                                            @RequestParam String approvedBy,
