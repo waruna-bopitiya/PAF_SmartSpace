@@ -35,6 +35,19 @@ api.interceptors.response.use(
   }
 );
 
+// Auth APIs
+export const loginWithEmail = (credentials) => 
+  axios.post(`${API_BASE_URL}/auth/login`, credentials);
+
+export const validateToken = (token) =>
+  axios.get(`${API_BASE_URL}/auth/validate`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+export const getCurrentUser = () => api.get('/auth/me');
+
+export const logout = () => api.post('/auth/logout');
+
 // Resource APIs
 export const resourceAPI = {
   getAll: () => api.get('/resources'),

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { loginWithEmail, validateToken } from '../services/api';
 import '../styles/Login.css';
 
 const Login = () => {
@@ -10,6 +11,21 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token) {
+      // Token received from Google OAuth redirect
+      validateToken(token).then((response) => {
+        login(response.data, token);
+        navigate('/');
+      }).catch((err) => {
+        setError('OAuth login failed. Please try again.');
+      });
+    }
+  }, [searchParams, login, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -17,28 +33,28 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // For demo purposes, we'll simulate a login
-      // In production, this would call an auth endpoint
-      const userData = {
-        id: 1,
+      const response = await loginWithEmail({
         email,
-        fullName: 'User Name',
-        role: 'USER',
+        password,
+      });
+
+      const token = response.data.token;
+      const userData = {
+        email: response.data.email,
+        name: response.data.name,
       };
-      const token = 'demo-jwt-token-' + Date.now();
       
       login(userData, token);
       navigate('/');
     } catch (err) {
-      setError('Login failed. Please try again.');
+      setError(err.response?.data || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = () => {
-    // Implement Google OAuth login
-    // window.location.href = 'http://localhost:8080/api/oauth2/authorization/google';
+    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
   };
 
   return (
