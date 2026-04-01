@@ -21,8 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.smartcampus.dto.LoginRequest;
 import com.smartcampus.dto.LoginResponse;
+import com.smartcampus.dto.RegisterRequest;
 import com.smartcampus.dto.UserDTO;
 import com.smartcampus.model.User;
+import com.smartcampus.model.UserRole;
 import com.smartcampus.service.UserService;
 import com.smartcampus.util.JwtTokenProvider;
 
@@ -77,6 +79,44 @@ public class AuthController {
 
         } catch (AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+        }
+    }
+
+    /**
+     * Create a new user account
+     * POST /auth/register
+     */
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        try {
+            UserRole requestedRole = UserRole.USER;
+            if (registerRequest.getRole() != null && !registerRequest.getRole().isBlank()) {
+                requestedRole = UserRole.fromString(registerRequest.getRole());
+            }
+
+            if (requestedRole != UserRole.USER) {
+                return ResponseEntity.badRequest().body("Only USER role is allowed for account creation");
+            }
+
+            User createdUser = userService.createUser(
+                    registerRequest.getEmail(),
+                    registerRequest.getPassword(),
+                    registerRequest.getFullName(),
+                    UserRole.USER
+            );
+
+            UserDTO response = new UserDTO();
+            response.setId(createdUser.getId());
+            response.setEmail(createdUser.getEmail());
+            response.setFullName(createdUser.getFullName());
+            response.setRole(createdUser.getRole().name());
+            response.setActive(createdUser.getActive());
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error creating user account");
         }
     }
 

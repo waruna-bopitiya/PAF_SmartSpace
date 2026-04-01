@@ -1,6 +1,20 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+const normalizeApiBaseUrl = (baseUrl) => {
+  const fallback = 'http://localhost:8080/api';
+  if (!baseUrl || typeof baseUrl !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = baseUrl.trim().replace(/\/+$/, '');
+  if (trimmed.endsWith('/api')) {
+    return trimmed;
+  }
+
+  return `${trimmed}/api`;
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(process.env.REACT_APP_API_BASE_URL);
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -24,7 +38,10 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const requestUrl = error.config?.url || '';
+    const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+    if (error.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem('authToken');
       window.location.href = '/login';
     }
@@ -36,6 +53,8 @@ apiClient.interceptors.response.use(
 export const authAPI = {
   login: (email, password) =>
     apiClient.post('/auth/login', { email, password }),
+  register: (data) =>
+    apiClient.post('/auth/register', data),
   logout: () =>
     apiClient.post('/auth/logout'),
   validate: () =>
