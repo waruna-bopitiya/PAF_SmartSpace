@@ -240,6 +240,11 @@
   color: white;
 }
 
+.role-label.technician {
+  background-color: #0d9488;
+  color: white;
+}
+
 .admin-badge {
   display: inline-block;
   background-color: #ef4444;

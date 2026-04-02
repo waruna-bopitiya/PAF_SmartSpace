@@ -34,6 +34,11 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/admin" replace />;
   }
 
+  // If user is TECHNICIAN, route them to technician dashboard
+  if (user?.role === 'TECHNICIAN') {
+    return <Navigate to="/technician" replace />;
+  }
+
   return children;
 };
 

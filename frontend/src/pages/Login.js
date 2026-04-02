@@ -19,10 +19,10 @@ const Login = () => {
   const navigate = useNavigate();
 
   const completeAuthSuccess = (responseData, message) => {
-    const { token, email: userEmail, fullName: userFullName, role } = responseData;
+    const { token, email: userEmail, fullName: userFullName, name, role } = responseData;
 
     localStorage.setItem('authToken', token);
-    login(userEmail, userFullName, token, role || 'USER');
+    login(userEmail, userFullName || name, token, role || 'USER');
 
     setSuccessMessage(message);
     setShowSuccessBox(true);
@@ -30,6 +30,8 @@ const Login = () => {
     setTimeout(() => {
       if (role === 'ADMIN') {
         navigate('/admin');
+      } else if (role === 'TECHNICIAN') {
+        navigate('/technician');
       } else {
         navigate('/');
       }

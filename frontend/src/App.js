@@ -5,12 +5,14 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import TechnicianDashboard from './pages/TechnicianDashboard';
 import Resources from './pages/Resources';
 import Bookings from './pages/Bookings';
 import Tickets from './pages/Tickets';
 import Notifications from './pages/Notifications';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import TechnicianRoute from './components/TechnicianRoute';
 import AuthSuccess from './pages/AuthSuccess';
 import './styles/App.css';
 
@@ -34,6 +36,17 @@ function App() {
                   <AdminDashboard />
                 </Layout>
               </AdminRoute>
+            }
+          />
+
+          <Route
+            path="/technician"
+            element={
+              <TechnicianRoute>
+                <Layout>
+                  <TechnicianDashboard />
+                </Layout>
+              </TechnicianRoute>
             }
           />
 

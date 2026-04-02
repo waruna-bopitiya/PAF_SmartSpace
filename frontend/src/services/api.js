@@ -152,7 +152,7 @@ export const ticketAPI = {
   assign: (id, assignedTo) =>
     apiClient.put(`/tickets/${id}/assign`, { assignedTo }),
   updateStatus: (id, status) =>
-    apiClient.put(`/tickets/${id}/status`, { status }),
+    apiClient.put(`/tickets/${id}/status`, null, { params: { status } }),
   reject: (id, reason) =>
     apiClient.put(`/tickets/${id}/reject`, { reason }),
   close: (id, resolutionNotes) =>

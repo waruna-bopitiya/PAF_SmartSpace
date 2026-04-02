@@ -14,6 +14,7 @@ const Layout = ({ children }) => {
 
   // Check if user is admin
   const isAdmin = user?.role === 'ADMIN';
+  const isTechnician = user?.role === 'TECHNICIAN';
 
   return (
     <div className="layout">
@@ -27,9 +28,9 @@ const Layout = ({ children }) => {
             
             {/* User Navigation */}
             <ul className="navbar-menu">
-              <li><Link to="/">Dashboard</Link></li>
-              <li><Link to="/resources">Resources</Link></li>
-              <li><Link to="/bookings">Bookings</Link></li>
+              <li><Link to={isTechnician ? '/technician' : '/'}>{isTechnician ? 'Technician Dashboard' : 'Dashboard'}</Link></li>
+              {!isTechnician && <li><Link to="/resources">Resources</Link></li>}
+              {!isTechnician && <li><Link to="/bookings">Bookings</Link></li>}
               <li><Link to="/tickets">Tickets</Link></li>
               <li><Link to="/notifications">Notifications</Link></li>
             </ul>
@@ -38,7 +39,9 @@ const Layout = ({ children }) => {
               {user && (
                 <>
                   <span>{user.fullName || user.name || user.email}</span>
-                  <span className="role-label user">User</span>
+                  <span className={`role-label ${isTechnician ? 'technician' : 'user'}`}>
+                    {isTechnician ? 'Technician' : 'User'}
+                  </span>
                 </>
               )}
               <button onClick={handleLogout} className="logout-btn">Logout</button>

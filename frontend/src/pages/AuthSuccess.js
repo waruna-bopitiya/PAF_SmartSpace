@@ -12,11 +12,11 @@ const AuthSuccess = () => {
     const token = params.get('token');
     const userEmail = params.get('email');
     const fullName = params.get('fullName');
+    const role = params.get('role') || 'USER';
 
     if (token && userEmail) {
       localStorage.setItem('authToken', token);
-      // Call login with correct parameters: (email, fullName, token)
-      login(userEmail, fullName || 'Google User', token);
+      login(userEmail, fullName || 'OAuth User', token, role);
       // Redirect to dashboard
       setTimeout(() => navigate('/'), 100);
     } else {
