@@ -5,7 +5,15 @@
 }
 
 .technician-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 18px;
   margin-bottom: 24px;
+}
+
+.technician-dashboard-header-copy {
+  min-width: 0;
 }
 
 .technician-dashboard-header h1 {
@@ -18,6 +26,35 @@
   margin: 0;
   color: #475569;
   font-size: 15px;
+}
+
+.technician-panel-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.technician-panel-tab {
+  border: 1px solid #dbe4ea;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.technician-panel-tab.active {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #ffffff;
+}
+
+.technician-panel-tab:hover {
+  transform: translateY(-1px);
 }
 
 .technician-stats-grid {
@@ -254,8 +291,106 @@
   color: #64748b;
 }
 
+.technician-notifications-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.technician-notification-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.technician-notification-list {
+  display: grid;
+  gap: 12px;
+}
+
+.technician-notification-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #dbe4ea;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #ffffff;
+}
+
+.technician-notification-item.unread {
+  border-left: 4px solid #0f766e;
+  background: linear-gradient(90deg, #f0fdfa 0%, #ffffff 18%);
+}
+
+.technician-notification-main h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.technician-notification-main p {
+  margin: 0 0 8px;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.technician-notification-time {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.technician-notification-action {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.technician-notification-action a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #0f766e;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.technician-notification-action a:hover {
+  background: #115e59;
+}
+
 @media (max-width: 768px) {
   .technician-dashboard-container {
     padding: 14px;
+  }
+
+  .technician-dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .technician-panel-tabs {
+    width: 100%;
+  }
+
+  .technician-panel-tab {
+    width: 100%;
+  }
+
+  .technician-notifications-header,
+  .technician-notification-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

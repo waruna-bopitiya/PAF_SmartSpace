@@ -31,8 +31,8 @@ const Layout = ({ children }) => {
               <li><Link to={isTechnician ? '/technician' : '/'}>{isTechnician ? 'Technician Dashboard' : 'Dashboard'}</Link></li>
               {!isTechnician && <li><Link to="/resources">Resources</Link></li>}
               {!isTechnician && <li><Link to="/bookings">Bookings</Link></li>}
-              <li><Link to="/tickets">Tickets</Link></li>
-              <li><Link to="/notifications">Notifications</Link></li>
+              {!isTechnician &&<li><Link to="/tickets">Tickets</Link></li>}
+             {!isTechnician && <li><Link to="/notifications">Notifications</Link></li>}
             </ul>
 
             <div className="navbar-user">

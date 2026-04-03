@@ -49,6 +49,18 @@ public class NotificationService {
     }
 
     /**
+     * Create notification with action URL
+     */
+    public Notification createNotification(String userId, String relatedEntityId, String relatedEntityType,
+                                          NotificationType type, String title, String message, String actionUrl) {
+        Notification notification = new Notification(userId, relatedEntityId, relatedEntityType, type, title, message, false);
+        notification.setActionUrl(actionUrl);
+
+        notification.onCreate();
+        return notificationRepository.save(notification);
+    }
+
+    /**
      * Mark notification as read
      */
     public Notification markAsRead(String id) {

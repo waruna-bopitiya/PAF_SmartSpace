@@ -147,13 +147,18 @@ public class TicketService {
         Ticket savedTicket = ticketRepository.save(ticket);
         
         // Send notification
+        String notificationTitle = status == TicketStatus.IN_PROGRESS
+            ? "Ticket moved to In Progress"
+            : "Your ticket status has been updated";
+
         notificationService.createNotification(
-                ticket.getCreatedBy(),
-                ticket.getId(),
-                "Ticket",
-                NotificationType.TICKET_STATUS_CHANGED,
-                "Your ticket status has been updated",
-                "Status: " + status.toString()
+            ticket.getCreatedBy(),
+            ticket.getId(),
+            "Ticket",
+            NotificationType.TICKET_STATUS_CHANGED,
+            notificationTitle,
+            "Status: " + status.toString(),
+            "/tickets?ticketId=" + ticket.getId()
         );
         
         return savedTicket;
@@ -176,8 +181,23 @@ public class TicketService {
     public Ticket closeTicket(String id) {
         Ticket ticket = getTicketById(id);
         ticket.setStatus(TicketStatus.CLOSED);
+        ticket.setResolvedDate(LocalDateTime.now());
+        ticket.setLastResponseAt(LocalDateTime.now());
         ticket.onUpdate();
-        return ticketRepository.save(ticket);
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        // Notify ticket creator that work has been completed.
+        notificationService.createNotification(
+                ticket.getCreatedBy(),
+                ticket.getId(),
+                "Ticket",
+                NotificationType.TICKET_STATUS_CHANGED,
+                "Your ticket is done",
+            "Ticket \"" + ticket.getTitle() + "\" has been marked as CLOSED by technician",
+            "/tickets?ticketId=" + ticket.getId()
+        );
+
+        return savedTicket;
     }
 
     /**

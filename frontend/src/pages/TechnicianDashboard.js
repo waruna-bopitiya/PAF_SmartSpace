@@ -7,6 +7,8 @@ const TechnicianDashboard = () => {
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [activePanel, setActivePanel] = useState('tickets');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [feedback, setFeedback] = useState({ type: '', message: '' });
@@ -27,8 +29,9 @@ const TechnicianDashboard = () => {
           ticketRequests.push(ticketAPI.getAssignedTo(user.email));
         }
 
-        const [ticketResponses, unreadRes] = await Promise.all([
+        const [ticketResponses, notificationsRes, unreadRes] = await Promise.all([
           Promise.all(ticketRequests),
+          notificationAPI.getAll(user?.id || user?.email, 0, 8),
           notificationAPI.getUnreadCount(user?.id || user?.email),
         ]);
 
@@ -46,6 +49,7 @@ const TechnicianDashboard = () => {
         const assignedTickets = Array.from(mergedById.values());
 
         setTickets(assignedTickets);
+        setNotifications(notificationsRes.data?.content || notificationsRes.data || []);
         setUnreadNotifications(unreadRes.data?.count || 0);
       } catch (error) {
         console.error('Error loading technician dashboard:', error);
@@ -152,115 +156,168 @@ const TechnicianDashboard = () => {
         <p>Welcome, {user?.fullName || user?.email}. Manage your assigned maintenance tickets.</p>
       </div>
 
-      <div className="technician-stats-grid">
-        <div className="technician-stat-card">
-          <h3>Assigned Tickets</h3>
-          <p className="value">{tickets.length}</p>
-        </div>
-        <div className="technician-stat-card">
-          <h3>Open Tickets</h3>
-          <p className="value">{openCount}</p>
-        </div>
-        <div className="technician-stat-card">
-          <h3>In Progress</h3>
-          <p className="value">{inProgressCount}</p>
-        </div>
-        <div className="technician-stat-card">
-          <h3>Closed Tickets</h3>
-          <p className="value">{closedCount}</p>
-        </div>
-        <div className="technician-stat-card">
-          <h3>Unread Notifications</h3>
-          <p className="value">{unreadNotifications}</p>
-        </div>
+      <div className="technician-panel-tabs">
+        <button
+          type="button"
+          className={`technician-panel-tab ${activePanel === 'tickets' ? 'active' : ''}`}
+          onClick={() => setActivePanel('tickets')}
+        >
+          Tickets ({tickets.length})
+        </button>
+        <button
+          type="button"
+          className={`technician-panel-tab ${activePanel === 'notifications' ? 'active' : ''}`}
+          onClick={() => setActivePanel('notifications')}
+        >
+          Notifications ({unreadNotifications})
+        </button>
       </div>
 
-      <div className="technician-dashboard-section">
-        <h2>My Assigned Tickets</h2>
-        {feedback.message && (
-          <div className={`technician-feedback ${feedback.type === 'error' ? 'error' : 'success'}`}>
-            {feedback.message}
+      {activePanel === 'tickets' && (
+        <>
+          <div className="technician-stats-grid">
+            <div className="technician-stat-card">
+              <h3>Assigned Tickets</h3>
+              <p className="value">{tickets.length}</p>
+            </div>
+            <div className="technician-stat-card">
+              <h3>Open Tickets</h3>
+              <p className="value">{openCount}</p>
+            </div>
+            <div className="technician-stat-card">
+              <h3>In Progress</h3>
+              <p className="value">{inProgressCount}</p>
+            </div>
+            <div className="technician-stat-card">
+              <h3>Closed Tickets</h3>
+              <p className="value">{closedCount}</p>
+            </div>
           </div>
-        )}
-        {tickets.length > 0 ? (
-          <div className="technician-table-wrapper">
-            <table className="technician-table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Category</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Location</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tickets.map((ticket) => (
-                  <tr key={ticket._id || ticket.id}>
-                    <td>{ticket.title}</td>
-                    <td>{ticket.category}</td>
-                    <td>
-                      <span className={`ticket-priority priority-${String(ticket.priority || '').toLowerCase()}`}>
-                        {ticket.priority}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`ticket-status-badge ticket-status-${String(ticket.status || '').toLowerCase()}`}>
-                        {ticket.status}
-                      </span>
-                    </td>
-                    <td>{ticket.location || 'N/A'}</td>
-                    <td>
-                      <div className="technician-actions">
-                        {ticket.status === 'OPEN' && (
-                          <button
-                            className="tech-action-btn start"
-                            disabled={actionLoadingId === (ticket._id || ticket.id)}
-                            onClick={() => handleUpdateTicketStatus(ticket, 'IN_PROGRESS')}
-                          >
-                            Start Work
-                          </button>
-                        )}
 
-                        {ticket.status === 'IN_PROGRESS' && (
-                          <button
-                            className="tech-action-btn close"
-                            disabled={actionLoadingId === (ticket._id || ticket.id)}
-                            onClick={() => handleUpdateTicketStatus(ticket, 'CLOSED')}
-                          >
-                            Close
-                          </button>
-                        )}
+          <div className="technician-dashboard-section">
+            <h2>My Assigned Tickets</h2>
+            {feedback.message && (
+              <div className={`technician-feedback ${feedback.type === 'error' ? 'error' : 'success'}`}>
+                {feedback.message}
+              </div>
+            )}
+            {tickets.length > 0 ? (
+              <div className="technician-table-wrapper">
+                <table className="technician-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Category</th>
+                      <th>Priority</th>
+                      <th>Status</th>
+                      <th>Location</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tickets.map((ticket) => (
+                      <tr key={ticket._id || ticket.id}>
+                        <td>{ticket.title}</td>
+                        <td>{ticket.category}</td>
+                        <td>
+                          <span className={`ticket-priority priority-${String(ticket.priority || '').toLowerCase()}`}>
+                            {ticket.priority}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`ticket-status-badge ticket-status-${String(ticket.status || '').toLowerCase()}`}>
+                            {ticket.status}
+                          </span>
+                        </td>
+                        <td>{ticket.location || 'N/A'}</td>
+                        <td>
+                          <div className="technician-actions">
+                            {ticket.status === 'OPEN' && (
+                              <button
+                                className="tech-action-btn start"
+                                disabled={actionLoadingId === (ticket._id || ticket.id)}
+                                onClick={() => handleUpdateTicketStatus(ticket, 'IN_PROGRESS')}
+                              >
+                                Start Work
+                              </button>
+                            )}
 
-                        {ticket.status === 'CLOSED' && (
-                          <button
-                            className="tech-action-btn reopen"
-                            disabled={actionLoadingId === (ticket._id || ticket.id)}
-                            onClick={() => handleUpdateTicketStatus(ticket, 'OPEN')}
-                          >
-                            Reopen
-                          </button>
-                        )}
+                            {ticket.status === 'IN_PROGRESS' && (
+                              <button
+                                className="tech-action-btn close"
+                                disabled={actionLoadingId === (ticket._id || ticket.id)}
+                                onClick={() => handleUpdateTicketStatus(ticket, 'CLOSED')}
+                              >
+                                Mark Done
+                              </button>
+                            )}
 
-                        <button
-                          className="tech-action-btn details"
-                          disabled={detailsLoading}
-                          onClick={() => handleViewDetails(ticket)}
-                        >
-                          Details
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                            {ticket.status === 'CLOSED' && (
+                              <button
+                                className="tech-action-btn reopen"
+                                disabled={actionLoadingId === (ticket._id || ticket.id)}
+                                onClick={() => handleUpdateTicketStatus(ticket, 'OPEN')}
+                              >
+                                Reopen
+                              </button>
+                            )}
+
+                            <button
+                              className="tech-action-btn details"
+                              disabled={detailsLoading}
+                              onClick={() => handleViewDetails(ticket)}
+                            >
+                              Details
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="technician-empty">No tickets are currently assigned to you.</p>
+            )}
           </div>
-        ) : (
-          <p className="technician-empty">No tickets are currently assigned to you.</p>
-        )}
-      </div>
+        </>
+      )}
+
+      {activePanel === 'notifications' && (
+        <div className="technician-dashboard-section">
+          <div className="technician-notifications-header">
+            <h2>Related Notifications</h2>
+            <span className="technician-notification-count">Unread: {unreadNotifications}</span>
+          </div>
+
+          {notifications.length > 0 ? (
+            <div className="technician-notification-list">
+              {notifications.map((notification) => (
+                <div
+                  key={notification._id || notification.id}
+                  className={`technician-notification-item ${notification.isRead ? 'read' : 'unread'}`}
+                >
+                  <div className="technician-notification-main">
+                    <h3>{notification.title}</h3>
+                    <p>{notification.message}</p>
+                    <span className="technician-notification-time">
+                      {formatDate(notification.createdAt)}
+                    </span>
+                  </div>
+
+                  {notification.actionUrl && (
+                    <div className="technician-notification-action">
+                      <a href={notification.actionUrl}>View Ticket</a>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="technician-empty">No related notifications yet.</p>
+          )}
+        </div>
+      )}
 
       {(detailsLoading || selectedTicket) && (
         <div className="technician-dashboard-section technician-details-section">
