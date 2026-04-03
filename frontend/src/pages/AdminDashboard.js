@@ -23,6 +23,7 @@ const AdminDashboard = () => {
   // Tickets Management
   const [tickets, setTickets] = useState([]);
   const [ticketFilter, setTicketFilter] = useState('OPEN');
+  const [ticketAssignments, setTicketAssignments] = useState({});
   
   // Resources Management
   const [resources, setResources] = useState([]);
@@ -254,6 +255,46 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error approving ticket:', error);
       alert('Failed to approve ticket');
+    }
+  };
+
+  const getTicketId = (ticket) => ticket?._id || ticket?.id;
+
+  const technicians = users.filter((u) => u.role === 'TECHNICIAN' && u.active !== false);
+
+  const handleAssignTicket = async (ticket) => {
+    const ticketId = getTicketId(ticket);
+    const selectedTechnicianId = ticketAssignments[ticketId];
+
+    if (!selectedTechnicianId) {
+      alert('Please select a technician first.');
+      return;
+    }
+
+    try {
+      await ticketAPI.assign(ticketId, selectedTechnicianId);
+
+      const assignedTech = technicians.find((tech) => tech.id === selectedTechnicianId);
+      setTickets((prevTickets) =>
+        prevTickets.map((t) => {
+          const id = getTicketId(t);
+          if (id !== ticketId) {
+            return t;
+          }
+
+          return {
+            ...t,
+            assignedTo: selectedTechnicianId,
+            assignedTechnicianName: assignedTech?.fullName || assignedTech?.email || selectedTechnicianId,
+          };
+        })
+      );
+
+      alert('✅ Ticket assigned to technician successfully');
+      fetchData();
+    } catch (error) {
+      console.error('Error assigning ticket:', error);
+      alert('Failed to assign ticket: ' + (error.response?.data?.message || error.response?.data || error.message));
     }
   };
 
@@ -678,10 +719,16 @@ const AdminDashboard = () => {
             <div className="filter-group">
               <label>Filter by Status:</label>
               <select value={ticketFilter} onChange={(e) => setTicketFilter(e.target.value)}>
+                <option value="ALL">All</option>
                 <option value="OPEN">Open</option>
                 <option value="IN_PROGRESS">In Progress</option>
                 <option value="CLOSED">Closed</option>
               </select>
+            </div>
+
+            <div className="filter-group" style={{ marginTop: '8px' }}>
+              <label>Available Technicians:</label>
+              <span style={{ fontWeight: 600 }}>{technicians.length}</span>
             </div>
 
             <div className="admin-table">
@@ -694,6 +741,7 @@ const AdminDashboard = () => {
                     <th>Priority</th>
                     <th>Status</th>
                     <th>Created By</th>
+                    <th>Assigned Technician</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -702,37 +750,66 @@ const AdminDashboard = () => {
                     tickets
                       .filter(t => ticketFilter === 'ALL' || t.status === ticketFilter)
                       .map(ticket => (
-                      <tr key={ticket.id}>
-                        <td>{ticket.id?.substring(0, 8)}...</td>
+                      <tr key={getTicketId(ticket)}>
+                        <td>{getTicketId(ticket)?.substring(0, 8)}...</td>
                         <td>{ticket.title}</td>
                         <td>{ticket.category}</td>
                         <td><span className={`priority ${ticket.priority?.toLowerCase()}`}>{ticket.priority}</span></td>
                         <td><span className={`status ${ticket.status?.toLowerCase()}`}>{ticket.status}</span></td>
                         <td>{ticket.createdBy}</td>
                         <td>
-                          {ticket.status === 'OPEN' ? (
-                            <>
-                              <button 
-                                className="btn-small btn-success" 
+                          {ticket.assignedTechnicianName || ticket.assignedTo || 'Not Assigned'}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            <select
+                              value={ticketAssignments[getTicketId(ticket)] || ticket.assignedTo || ''}
+                              onChange={(e) => setTicketAssignments((prev) => ({
+                                ...prev,
+                                [getTicketId(ticket)]: e.target.value,
+                              }))}
+                              style={{ minWidth: '150px' }}
+                            >
+                              <option value="">Select Technician</option>
+                              {technicians.map((tech) => (
+                                <option key={tech.id} value={tech.id}>
+                                  {tech.fullName || tech.email}
+                                </option>
+                              ))}
+                            </select>
+
+                            <button
+                              className="btn-small btn-success"
+                              onClick={() => handleAssignTicket(ticket)}
+                            >
+                              Assign
+                            </button>
+
+                            {ticket.status === 'OPEN' && (
+                              <button
+                                className="btn-small btn-success"
                                 onClick={() => handleApproveTicket(ticket)}
                               >
                                 Approve
                               </button>
-                              <button 
-                                className="btn-small btn-danger" 
+                            )}
+
+                            {ticket.status === 'OPEN' && (
+                              <button
+                                className="btn-small btn-danger"
                                 onClick={() => handleRejectTicket(ticket)}
                               >
                                 Reject
                               </button>
-                            </>
-                          ) : (
-                            <button className="btn-small btn-danger" onClick={() => handleDeleteTicket(ticket.id)}>Delete</button>
-                          )}
+                            )}
+
+                            <button className="btn-small btn-danger" onClick={() => handleDeleteTicket(getTicketId(ticket))}>Delete</button>
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan="7" className="text-center">No tickets found</td></tr>
+                    <tr><td colSpan="8" className="text-center">No tickets found</td></tr>
                   )}
                 </tbody>
               </table>

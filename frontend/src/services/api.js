@@ -149,8 +149,8 @@ export const ticketAPI = {
     apiClient.post('/tickets', data),
   update: (id, data) =>
     apiClient.patch(`/tickets/${id}`, data),
-  assign: (id, assignedTo) =>
-    apiClient.put(`/tickets/${id}/assign`, { assignedTo }),
+  assign: (id, technicianId) =>
+    apiClient.put(`/tickets/${id}/assign`, null, { params: { technicianId } }),
   updateStatus: (id, status) =>
     apiClient.put(`/tickets/${id}/status`, null, { params: { status } }),
   reject: (id, reason) =>
