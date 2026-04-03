@@ -32,10 +32,10 @@ public class UserService {
         // Create new user
         User newUser = new User();
         newUser.setEmail(email);
-        newUser.setName(name);
+        newUser.setFullName(name);
         newUser.setGoogleId(googleId);
         newUser.setProfilePictureUrl(profilePictureUrl);
-        newUser.setRole("USER");
+        newUser.setRole(com.smartcampus.model.UserRole.USER);
         
         return userRepository.save(newUser);
     }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
+@SuppressWarnings("unused")
 public interface TicketAttachmentRepository extends JpaRepository<TicketAttachment, Long> {
     List<TicketAttachment> findByTicket(Ticket ticket);
 

@@ -47,9 +47,11 @@ public class Resource {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "resource", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<Booking> bookings = new HashSet<>();
 
     @OneToMany(mappedBy = "resource", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<Ticket> tickets = new HashSet<>();
 
     @PrePersist
@@ -62,12 +64,4 @@ public class Resource {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
-
-enum ResourceType {
-    LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT
-}
-
-enum ResourceStatus {
-    ACTIVE, OUT_OF_SERVICE, MAINTENANCE
 }

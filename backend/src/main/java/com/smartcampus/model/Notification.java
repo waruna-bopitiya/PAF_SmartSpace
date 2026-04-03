@@ -34,6 +34,7 @@ public class Notification {
     private String message;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean isRead = false;
 
     @Column(nullable = false, updatable = false)
@@ -52,11 +53,4 @@ public class Notification {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
-}
-
-enum NotificationType {
-    BOOKING_APPROVED, BOOKING_REJECTED, BOOKING_CANCELLED,
-    TICKET_STATUS_CHANGED, TICKET_ASSIGNED, TICKET_COMMENTED,
-    COMMENT_ON_YOUR_TICKET, COMMENT_ON_YOUR_BOOKING,
-    SYSTEM_ALERT
 }

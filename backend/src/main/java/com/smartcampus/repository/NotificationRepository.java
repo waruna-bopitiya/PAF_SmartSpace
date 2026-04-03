@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
+@SuppressWarnings("unused")
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     List<Notification> findByUser(User user);
 

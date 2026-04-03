@@ -17,6 +17,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SuppressWarnings("unused")
 public class Ticket {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -68,9 +69,11 @@ public class Ticket {
     private String rejectionReason;
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<TicketAttachment> attachments = new HashSet<>();
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<TicketComment> comments = new HashSet<>();
 
     @PrePersist
@@ -83,16 +86,4 @@ public class Ticket {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
-
-enum TicketCategory {
-    DAMAGE, MALFUNCTION, CLEANING, SAFETY_CONCERN, OTHER
-}
-
-enum TicketPriority {
-    LOW, MEDIUM, HIGH, URGENT
-}
-
-enum TicketStatus {
-    OPEN, IN_PROGRESS, RESOLVED, CLOSED, REJECTED
 }

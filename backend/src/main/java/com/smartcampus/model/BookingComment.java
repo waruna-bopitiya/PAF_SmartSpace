@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SuppressWarnings("unused")
 public class BookingComment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

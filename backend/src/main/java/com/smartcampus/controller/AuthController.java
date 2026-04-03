@@ -50,7 +50,7 @@ public class AuthController {
                         user.get().getId().toString(),
                         user.get().getRole()
                 );
-                return ResponseEntity.ok(new LoginResponse(token, user.get().getEmail(), user.get().getName()));
+                return ResponseEntity.ok(new LoginResponse(token, user.get().getEmail(), user.get().getFullName()));
             }
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
 

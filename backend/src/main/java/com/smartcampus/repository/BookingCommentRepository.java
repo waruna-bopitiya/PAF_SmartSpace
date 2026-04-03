@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
+@SuppressWarnings("unused")
 public interface BookingCommentRepository extends JpaRepository<BookingComment, Long> {
     List<BookingComment> findByBooking(Booking booking);
 }

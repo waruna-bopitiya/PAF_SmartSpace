@@ -62,6 +62,7 @@ public class Booking {
     private LocalDateTime cancelledAt;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<BookingComment> comments = new HashSet<>();
 
     @PrePersist
@@ -74,8 +75,4 @@ public class Booking {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
-
-enum BookingStatus {
-    PENDING, APPROVED, REJECTED, CANCELLED
 }
