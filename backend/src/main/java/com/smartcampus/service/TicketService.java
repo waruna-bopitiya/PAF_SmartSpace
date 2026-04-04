@@ -22,31 +22,39 @@ public class TicketService {
     private final TicketAttachmentRepository ticketAttachmentRepository;
     private final NotificationService notificationService;
 
-    public TicketDTO createTicket(TicketDTO ticketDTO, Long userId) {
-        Resource resource = resourceRepository.findById(ticketDTO.getResourceId())
-                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
+    public TicketDTO createTicket(TicketDTO ticketDTO, String userId) {
+        String resourceId = ticketDTO.getResourceId();
+        
+        // Verify resource exists
+        if (!resourceRepository.existsById(resourceId)) {
+            throw new ResourceNotFoundException("Resource not found");
+        }
 
-        User creator = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        // Verify user exists
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
 
         String ticketNumber = "TKT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         Ticket ticket = Ticket.builder()
                 .ticketNumber(ticketNumber)
-                .resource(resource)
-                .createdBy(creator)
+                .resourceId(resourceId)
+                .createdById(userId)
                 .category(TicketCategory.valueOf(ticketDTO.getCategory()))
                 .description(ticketDTO.getDescription())
                 .priority(TicketPriority.valueOf(ticketDTO.getPriority()))
                 .status(TicketStatus.OPEN)
                 .contactNumber(ticketDTO.getContactNumber())
                 .build();
+        
+        ticket.onCreate();
 
         Ticket saved = ticketRepository.save(ticket);
         return convertToDTO(saved);
     }
 
-    public TicketDTO getTicketById(Long id) {
+    public TicketDTO getTicketById(String id) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
         return convertToDTO(ticket);
@@ -64,20 +72,22 @@ public class TicketService {
                 .collect(Collectors.toList());
     }
 
-    public TicketDTO assignTicket(Long id, Long technicianId) {
+    public TicketDTO assignTicket(String id, String technicianId) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
 
-        User technician = userRepository.findById(technicianId)
-                .orElseThrow(() -> new ResourceNotFoundException("Technician not found"));
+        if (!userRepository.existsById(technicianId)) {
+            throw new ResourceNotFoundException("Technician not found");
+        }
 
-        ticket.setAssignedTo(technician);
+        ticket.setAssignedToId(technicianId);
         ticket.setStatus(TicketStatus.IN_PROGRESS);
+        ticket.onUpdate();
         Ticket updated = ticketRepository.save(ticket);
 
         // Send notification
         notificationService.createNotification(
-                technician.getId(),
+                technicianId,
                 NotificationType.TICKET_ASSIGNED,
                 "Ticket Assigned",
                 "Ticket " + ticket.getTicketNumber() + " has been assigned to you"
@@ -86,7 +96,7 @@ public class TicketService {
         return convertToDTO(updated);
     }
 
-    public TicketDTO updateTicketStatus(Long id, String status, String resolutionNotes) {
+    public TicketDTO updateTicketStatus(String id, String status, String resolutionNotes) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
 
@@ -94,12 +104,13 @@ public class TicketService {
         if (resolutionNotes != null) {
             ticket.setResolutionNotes(resolutionNotes);
         }
+        ticket.onUpdate();
 
         Ticket updated = ticketRepository.save(ticket);
 
         // Send notification
         notificationService.createNotification(
-                ticket.getCreatedBy().getId(),
+                ticket.getCreatedById(),
                 NotificationType.TICKET_STATUS_CHANGED,
                 "Ticket Status Updated",
                 "Your ticket " + ticket.getTicketNumber() + " status has been updated to " + status
@@ -108,17 +119,18 @@ public class TicketService {
         return convertToDTO(updated);
     }
 
-    public TicketDTO rejectTicket(Long id, String rejectionReason) {
+    public TicketDTO rejectTicket(String id, String rejectionReason) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
 
         ticket.setStatus(TicketStatus.REJECTED);
         ticket.setRejectionReason(rejectionReason);
+        ticket.onUpdate();
         Ticket updated = ticketRepository.save(ticket);
 
         // Send notification
         notificationService.createNotification(
-                ticket.getCreatedBy().getId(),
+                ticket.getCreatedById(),
                 NotificationType.TICKET_STATUS_CHANGED,
                 "Ticket Rejected",
                 "Your ticket has been rejected. Reason: " + rejectionReason
@@ -127,28 +139,35 @@ public class TicketService {
         return convertToDTO(updated);
     }
 
-    public TicketDTO addComment(Long ticketId, Long userId, String content) {
+    public TicketDTO addComment(String ticketId, String userId, String content) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
 
         TicketComment comment = TicketComment.builder()
-                .ticket(ticket)
-                .user(user)
+                .ticketId(ticketId)
+                .userId(userId)
                 .content(content)
                 .build();
+        
+        comment.onCreate();
 
-        ticketCommentRepository.save(comment);
+        TicketComment savedComment = ticketCommentRepository.save(comment);
+        ticket.getCommentIds().add(savedComment.getId());
+        ticketRepository.save(ticket);
 
         // Send notification to ticket creator if comment is from someone else
-        if (!ticket.getCreatedBy().getId().equals(userId)) {
+        if (!ticket.getCreatedById().equals(userId)) {
+            User user = userRepository.findById(userId).orElse(null);
+            String userName = user != null ? user.getFullName() : "User";
             notificationService.createNotification(
-                    ticket.getCreatedBy().getId(),
+                    ticket.getCreatedById(),
                     NotificationType.COMMENT_ON_YOUR_TICKET,
                     "New Comment",
-                    user.getFullName() + " commented on your ticket " + ticket.getTicketNumber()
+                    userName + " commented on your ticket " + ticket.getTicketNumber()
             );
         }
 
@@ -159,7 +178,7 @@ public class TicketService {
         return TicketDTO.builder()
                 .id(ticket.getId())
                 .ticketNumber(ticket.getTicketNumber())
-                .resourceId(ticket.getResource().getId())
+                .resourceId(ticket.getResourceId())
                 .category(ticket.getCategory().toString())
                 .description(ticket.getDescription())
                 .priority(ticket.getPriority().toString())
@@ -167,7 +186,7 @@ public class TicketService {
                 .contactNumber(ticket.getContactNumber())
                 .resolutionNotes(ticket.getResolutionNotes())
                 .rejectionReason(ticket.getRejectionReason())
-                .assignedToId(ticket.getAssignedTo() != null ? ticket.getAssignedTo().getId() : null)
+                .assignedToId(ticket.getAssignedToId())
                 .build();
     }
 }

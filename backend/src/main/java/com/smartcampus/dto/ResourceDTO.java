@@ -8,7 +8,7 @@ import jakarta.validation.constraints.*;
 @AllArgsConstructor
 @Builder
 public class ResourceDTO {
-    private Long id;
+    private String id;
 
     @NotBlank
     private String name;

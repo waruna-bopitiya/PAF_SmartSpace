@@ -9,11 +9,10 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class BookingDTO {
-    private Long id;
+    private String id;
 
-    @NotNull
-    @Positive
-    private Long resourceId;
+    @NotBlank
+    private String resourceId;
 
     @NotNull
     private LocalDateTime startTime;

@@ -47,7 +47,7 @@ public class AuthController {
             if (user.isPresent()) {
                 String token = jwtTokenProvider.generateToken(
                         user.get().getEmail(),
-                        user.get().getId().toString(),
+                        user.get().getId(),
                         user.get().getRole()
                 );
                 return ResponseEntity.ok(new LoginResponse(token, user.get().getEmail(), user.get().getName()));

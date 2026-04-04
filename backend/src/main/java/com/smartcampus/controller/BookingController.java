@@ -26,15 +26,15 @@ public class BookingController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BookingDTO> getBookingById(@PathVariable Long id) {
+    public ResponseEntity<BookingDTO> getBookingById(@PathVariable String id) {
         return ResponseEntity.ok(bookingService.getBookingById(id));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<BookingDTO> createBooking(@Valid @RequestBody BookingDTO bookingDTO, Authentication authentication) {
-        // Extract user ID from authentication and pass it
-        Long userId = Long.parseLong(authentication.getName());
+        // Extract user ID from authentication
+        String userId = authentication.getName();
         BookingDTO created = bookingService.createBooking(bookingDTO, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -47,21 +47,21 @@ public class BookingController {
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BookingDTO> approveBooking(@PathVariable Long id, @RequestParam String notes) {
+    public ResponseEntity<BookingDTO> approveBooking(@PathVariable String id, @RequestParam String notes) {
         BookingDTO approved = bookingService.approveBooking(id, notes);
         return ResponseEntity.ok(approved);
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BookingDTO> rejectBooking(@PathVariable Long id, @RequestParam String reason) {
+    public ResponseEntity<BookingDTO> rejectBooking(@PathVariable String id, @RequestParam String reason) {
         BookingDTO rejected = bookingService.rejectBooking(id, reason);
         return ResponseEntity.ok(rejected);
     }
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-    public ResponseEntity<BookingDTO> cancelBooking(@PathVariable Long id) {
+    public ResponseEntity<BookingDTO> cancelBooking(@PathVariable String id) {
         BookingDTO cancelled = bookingService.cancelBooking(id);
         return ResponseEntity.ok(cancelled);
     }

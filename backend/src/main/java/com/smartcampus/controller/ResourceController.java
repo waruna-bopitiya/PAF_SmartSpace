@@ -24,7 +24,7 @@ public class ResourceController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ResourceDTO> getResourceById(@PathVariable Long id) {
+    public ResponseEntity<ResourceDTO> getResourceById(@PathVariable String id) {
         return ResponseEntity.ok(resourceService.getResourceById(id));
     }
 
@@ -37,14 +37,14 @@ public class ResourceController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResourceDTO> updateResource(@PathVariable Long id, @Valid @RequestBody ResourceDTO resourceDTO) {
+    public ResponseEntity<ResourceDTO> updateResource(@PathVariable String id, @Valid @RequestBody ResourceDTO resourceDTO) {
         ResourceDTO updated = resourceService.updateResource(id, resourceDTO);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteResource(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteResource(@PathVariable String id) {
         resourceService.deleteResource(id);
         return ResponseEntity.noContent().build();
     }

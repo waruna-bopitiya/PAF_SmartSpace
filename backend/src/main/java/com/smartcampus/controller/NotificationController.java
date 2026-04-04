@@ -18,37 +18,37 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<List<NotificationDTO>> getNotifications(Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        String userId = authentication.getName();
         return ResponseEntity.ok(notificationService.getUserNotifications(userId));
     }
 
     @GetMapping("/unread")
     public ResponseEntity<List<NotificationDTO>> getUnreadNotifications(Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        String userId = authentication.getName();
         return ResponseEntity.ok(notificationService.getUnreadNotifications(userId));
     }
 
     @GetMapping("/unread-count")
     public ResponseEntity<Long> getUnreadCount(Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        String userId = authentication.getName();
         return ResponseEntity.ok(notificationService.getUnreadNotificationsCount(userId));
     }
 
     @PostMapping("/{id}/read")
-    public ResponseEntity<NotificationDTO> markAsRead(@PathVariable Long id) {
+    public ResponseEntity<NotificationDTO> markAsRead(@PathVariable String id) {
         NotificationDTO notification = notificationService.markAsRead(id);
         return ResponseEntity.ok(notification);
     }
 
     @PostMapping("/read-all")
     public ResponseEntity<Void> markAllAsRead(Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        String userId = authentication.getName();
         notificationService.markAllAsRead(userId);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteNotification(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteNotification(@PathVariable String id) {
         notificationService.deleteNotification(id);
         return ResponseEntity.noContent().build();
     }

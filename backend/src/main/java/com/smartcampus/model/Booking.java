@@ -1,78 +1,65 @@
 package com.smartcampus.model;
 
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
-@Entity
-@Table(name = "bookings", indexes = {
-    @Index(name = "idx_resource_id", columnList = "resource_id"),
-    @Index(name = "idx_user_id", columnList = "user_id"),
-    @Index(name = "idx_status", columnList = "status"),
-    @Index(name = "idx_booking_time", columnList = "start_time, end_time")
-})
+@Document(collection = "bookings")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Booking {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "resource_id", nullable = false)
-    private Resource resource;
+    @Indexed
+    private String resourceId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Indexed
+    private String userId;
 
-    @Column(nullable = false)
     private LocalDateTime startTime;
 
-    @Column(nullable = false)
     private LocalDateTime endTime;
 
-    @Column(length = 500, nullable = false)
     private String purpose;
 
-    @Column(nullable = false)
     private Integer expectedAttendees;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Indexed
     private BookingStatus status;
 
-    @Column(length = 1000)
     private String rejectionReason;
 
-    @Column(length = 1000)
     private String approvalNotes;
 
-    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(nullable = false)
     private LocalDateTime cancelledAt;
 
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<BookingComment> comments = new HashSet<>();
+    // Store IDs of related comments instead of relationships
+    @Builder.Default
+    private List<String> commentIds = new ArrayList<>();
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+    public void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }
 

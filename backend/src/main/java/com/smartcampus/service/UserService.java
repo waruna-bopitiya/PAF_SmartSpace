@@ -25,6 +25,7 @@ public class UserService {
             if (user.getGoogleId() == null) {
                 user.setGoogleId(googleId);
                 user.setProfilePictureUrl(profilePictureUrl);
+                user.onUpdate();
                 userRepository.save(user);
             }
             return user;
@@ -37,6 +38,7 @@ public class UserService {
         newUser.setGoogleId(googleId);
         newUser.setProfilePictureUrl(profilePictureUrl);
         newUser.setRole(UserRole.valueOf("USER"));
+        newUser.onCreate();
         
         return userRepository.save(newUser);
     }
@@ -45,9 +47,7 @@ public class UserService {
      * Find user by Google ID
      */
     public Optional<User> findByGoogleId(String googleId) {
-        return userRepository.findAll().stream()
-                .filter(u -> u.getGoogleId() != null && u.getGoogleId().equals(googleId))
-                .findFirst();
+        return userRepository.findByGoogleId(googleId);
     }
 
     /**
@@ -58,9 +58,9 @@ public class UserService {
     }
 
     /**
-     * Get or create user by ID
+     * Get user by ID
      */
-    public Optional<User> getUserById(Long id) {
+    public Optional<User> getUserById(String id) {
         return userRepository.findById(id);
     }
 }

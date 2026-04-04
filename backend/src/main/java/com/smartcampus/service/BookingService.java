@@ -22,16 +22,21 @@ public class BookingService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
 
-    public BookingDTO createBooking(BookingDTO bookingDTO, Long userId) {
-        Resource resource = resourceRepository.findById(bookingDTO.getResourceId())
-                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
+    public BookingDTO createBooking(BookingDTO bookingDTO, String userId) {
+        // Verify resource exists
+        String resourceId = bookingDTO.getResourceId();
+        if (!resourceRepository.existsById(resourceId)) {
+            throw new ResourceNotFoundException("Resource not found");
+        }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        // Verify user exists
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
 
         // Check for conflicts
         List<Booking> conflicts = bookingRepository.findConflictingBookings(
-                bookingDTO.getResourceId(),
+                resourceId,
                 bookingDTO.getStartTime(),
                 bookingDTO.getEndTime()
         );
@@ -41,29 +46,32 @@ public class BookingService {
         }
 
         Booking booking = Booking.builder()
-                .resource(resource)
-                .user(user)
+                .resourceId(resourceId)
+                .userId(userId)
                 .startTime(bookingDTO.getStartTime())
                 .endTime(bookingDTO.getEndTime())
                 .purpose(bookingDTO.getPurpose())
                 .expectedAttendees(bookingDTO.getExpectedAttendees())
                 .status(BookingStatus.PENDING)
                 .build();
+        
+        booking.onCreate();
 
         Booking saved = bookingRepository.save(booking);
         return convertToDTO(saved);
     }
 
-    public BookingDTO getBookingById(Long id) {
+    public BookingDTO getBookingById(String id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + id));
         return convertToDTO(booking);
     }
 
-    public List<BookingDTO> getUserBookings(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return bookingRepository.findByUser(user).stream()
+    public List<BookingDTO> getUserBookings(String userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
+        return bookingRepository.findByUserId(userId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -80,36 +88,40 @@ public class BookingService {
                 .collect(Collectors.toList());
     }
 
-    public BookingDTO approveBooking(Long id, String approvalNotes) {
+    public BookingDTO approveBooking(String id, String approvalNotes) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
         booking.setStatus(BookingStatus.APPROVED);
         booking.setApprovalNotes(approvalNotes);
+        booking.onUpdate();
         Booking updated = bookingRepository.save(booking);
 
         // Send notification
+        Resource resource = resourceRepository.findById(booking.getResourceId()).orElse(null);
+        String resourceName = resource != null ? resource.getName() : "Resource";
         notificationService.createNotification(
-                booking.getUser().getId(),
+                booking.getUserId(),
                 NotificationType.BOOKING_APPROVED,
                 "Booking Approved",
-                "Your booking for " + booking.getResource().getName() + " has been approved"
+                "Your booking for " + resourceName + " has been approved"
         );
 
         return convertToDTO(updated);
     }
 
-    public BookingDTO rejectBooking(Long id, String rejectionReason) {
+    public BookingDTO rejectBooking(String id, String rejectionReason) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
         booking.setStatus(BookingStatus.REJECTED);
         booking.setRejectionReason(rejectionReason);
+        booking.onUpdate();
         Booking updated = bookingRepository.save(booking);
 
         // Send notification
         notificationService.createNotification(
-                booking.getUser().getId(),
+                booking.getUserId(),
                 NotificationType.BOOKING_REJECTED,
                 "Booking Rejected",
                 "Your booking has been rejected. Reason: " + rejectionReason
@@ -118,19 +130,22 @@ public class BookingService {
         return convertToDTO(updated);
     }
 
-    public BookingDTO cancelBooking(Long id) {
+    public BookingDTO cancelBooking(String id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
         booking.setStatus(BookingStatus.CANCELLED);
+        booking.onUpdate();
         Booking updated = bookingRepository.save(booking);
 
         // Send notification
+        Resource resource = resourceRepository.findById(booking.getResourceId()).orElse(null);
+        String resourceName = resource != null ? resource.getName() : "Resource";
         notificationService.createNotification(
-                booking.getUser().getId(),
+                booking.getUserId(),
                 NotificationType.BOOKING_CANCELLED,
                 "Booking Cancelled",
-                "Your booking for " + booking.getResource().getName() + " has been cancelled"
+                "Your booking for " + resourceName + " has been cancelled"
         );
 
         return convertToDTO(updated);
@@ -139,7 +154,7 @@ public class BookingService {
     private BookingDTO convertToDTO(Booking booking) {
         return BookingDTO.builder()
                 .id(booking.getId())
-                .resourceId(booking.getResource().getId())
+                .resourceId(booking.getResourceId())
                 .startTime(booking.getStartTime())
                 .endTime(booking.getEndTime())
                 .purpose(booking.getPurpose())
@@ -148,5 +163,8 @@ public class BookingService {
                 .rejectionReason(booking.getRejectionReason())
                 .approvalNotes(booking.getApprovalNotes())
                 .build();
+    }
+}
+
     }
 }

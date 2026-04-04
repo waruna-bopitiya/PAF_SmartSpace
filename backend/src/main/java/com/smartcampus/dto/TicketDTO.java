@@ -8,13 +8,12 @@ import jakarta.validation.constraints.*;
 @AllArgsConstructor
 @Builder
 public class TicketDTO {
-    private Long id;
+    private String id;
 
     private String ticketNumber;
 
-    @NotNull
-    @Positive
-    private Long resourceId;
+    @NotBlank
+    private String resourceId;
 
     @NotNull
     private String category;
@@ -33,5 +32,5 @@ public class TicketDTO {
 
     private String rejectionReason;
 
-    private Long assignedToId;
+    private String assignedToId;
 }

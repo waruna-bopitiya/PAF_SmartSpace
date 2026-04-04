@@ -28,11 +28,13 @@ public class ResourceService {
                 .status(ResourceStatus.ACTIVE)
                 .imageUrl(resourceDTO.getImageUrl())
                 .build();
+        
+        resource.onCreate();
         Resource saved = resourceRepository.save(resource);
         return convertToDTO(saved);
     }
 
-    public ResourceDTO getResourceById(Long id) {
+    public ResourceDTO getResourceById(String id) {
         Resource resource = resourceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found with ID: " + id));
         return convertToDTO(resource);
@@ -58,7 +60,7 @@ public class ResourceService {
                 .collect(Collectors.toList());
     }
 
-    public ResourceDTO updateResource(Long id, ResourceDTO resourceDTO) {
+    public ResourceDTO updateResource(String id, ResourceDTO resourceDTO) {
         Resource resource = resourceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found with ID: " + id));
 
@@ -69,12 +71,13 @@ public class ResourceService {
         if (resourceDTO.getStatus() != null) {
             resource.setStatus(ResourceStatus.valueOf(resourceDTO.getStatus()));
         }
+        resource.onUpdate();
 
         Resource updated = resourceRepository.save(resource);
         return convertToDTO(updated);
     }
 
-    public void deleteResource(Long id) {
+    public void deleteResource(String id) {
         if (!resourceRepository.existsById(id)) {
             throw new ResourceNotFoundException("Resource not found with ID: " + id);
         }

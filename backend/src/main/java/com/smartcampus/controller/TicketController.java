@@ -26,14 +26,14 @@ public class TicketController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TicketDTO> getTicketById(@PathVariable Long id) {
+    public ResponseEntity<TicketDTO> getTicketById(@PathVariable String id) {
         return ResponseEntity.ok(ticketService.getTicketById(id));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<TicketDTO> createTicket(@Valid @RequestBody TicketDTO ticketDTO, Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        String userId = authentication.getName();
         TicketDTO created = ticketService.createTicket(ticketDTO, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -46,7 +46,7 @@ public class TicketController {
 
     @PostMapping("/{id}/assign")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<TicketDTO> assignTicket(@PathVariable Long id, @RequestParam Long technicianId) {
+    public ResponseEntity<TicketDTO> assignTicket(@PathVariable String id, @RequestParam String technicianId) {
         TicketDTO assigned = ticketService.assignTicket(id, technicianId);
         return ResponseEntity.ok(assigned);
     }
@@ -54,7 +54,7 @@ public class TicketController {
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TECHNICIAN')")
     public ResponseEntity<TicketDTO> updateTicketStatus(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam String status,
             @RequestParam(required = false) String resolutionNotes) {
         TicketDTO updated = ticketService.updateTicketStatus(id, status, resolutionNotes);
@@ -63,7 +63,7 @@ public class TicketController {
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<TicketDTO> rejectTicket(@PathVariable Long id, @RequestParam String reason) {
+    public ResponseEntity<TicketDTO> rejectTicket(@PathVariable String id, @RequestParam String reason) {
         TicketDTO rejected = ticketService.rejectTicket(id, reason);
         return ResponseEntity.ok(rejected);
     }
@@ -71,10 +71,10 @@ public class TicketController {
     @PostMapping("/{id}/comments")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('TECHNICIAN')")
     public ResponseEntity<TicketDTO> addComment(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam String content,
             Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        String userId = authentication.getName();
         TicketDTO ticket = ticketService.addComment(id, userId, content);
         return ResponseEntity.ok(ticket);
     }

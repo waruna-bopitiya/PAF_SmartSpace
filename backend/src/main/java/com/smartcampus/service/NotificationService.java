@@ -3,7 +3,6 @@ package com.smartcampus.service;
 import com.smartcampus.dto.NotificationDTO;
 import com.smartcampus.model.Notification;
 import com.smartcampus.model.NotificationType;
-import com.smartcampus.model.User;
 import com.smartcampus.exception.ResourceNotFoundException;
 import com.smartcampus.repository.NotificationRepository;
 import com.smartcampus.repository.UserRepository;
@@ -21,44 +20,52 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
 
-    public void createNotification(Long userId, NotificationType type, String title, String message) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    public void createNotification(String userId, NotificationType type, String title, String message) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
 
         Notification notification = Notification.builder()
-                .user(user)
+                .userId(userId)
                 .type(type)
                 .title(title)
                 .message(message)
                 .isRead(false)
                 .build();
+        
+        notification.onCreate();
 
         notificationRepository.save(notification);
     }
 
-    public List<NotificationDTO> getUserNotifications(Long userId) {
+    public List<NotificationDTO> getUserNotifications(String userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
-    public List<NotificationDTO> getUnreadNotifications(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    public List<NotificationDTO> getUnreadNotifications(String userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
 
-        return notificationRepository.findByUserAndIsReadFalse(user).stream()
+        return notificationRepository.findByUserIdAndIsReadFalse(userId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
-    public long getUnreadNotificationsCount(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    public long getUnreadNotificationsCount(String userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
 
-        return notificationRepository.countByUserAndIsReadFalse(user);
+        return notificationRepository.countByUserIdAndIsReadFalse(userId);
     }
 
-    public NotificationDTO markAsRead(Long notificationId) {
+    public NotificationDTO markAsRead(String notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
 
@@ -69,11 +76,12 @@ public class NotificationService {
         return convertToDTO(updated);
     }
 
-    public void markAllAsRead(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    public void markAllAsRead(String userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
 
-        List<Notification> unreadNotifications = notificationRepository.findByUserAndIsReadFalse(user);
+        List<Notification> unreadNotifications = notificationRepository.findByUserIdAndIsReadFalse(userId);
         unreadNotifications.forEach(n -> {
             n.setIsRead(true);
             n.setReadAt(LocalDateTime.now());
@@ -81,7 +89,7 @@ public class NotificationService {
         notificationRepository.saveAll(unreadNotifications);
     }
 
-    public void deleteNotification(Long notificationId) {
+    public void deleteNotification(String notificationId) {
         if (!notificationRepository.existsById(notificationId)) {
             throw new ResourceNotFoundException("Notification not found");
         }
