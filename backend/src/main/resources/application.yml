@@ -4,7 +4,7 @@ spring:
   
   data:
     mongodb:
-      uri: mongodb://localhost:27017/smart_campus_db
+      uri: mongodb+srv://thewnima12hn_db_user:<db_password>@pafdb.2676cf5.mongodb.net/?appName=pafdb
       # Alternative configuration (if not using URI):
       # host: localhost
       # port: 27017
