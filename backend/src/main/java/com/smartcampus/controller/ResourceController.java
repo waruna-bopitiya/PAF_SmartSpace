@@ -1,5 +1,6 @@
 package com.smartcampus.controller;
 
+// Inport statements 
 import com.smartcampus.dto.ResourceDTO;
 import com.smartcampus.model.Resource;
 import com.smartcampus.model.ResourceStatus;
