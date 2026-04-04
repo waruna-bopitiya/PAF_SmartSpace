@@ -832,6 +832,31 @@ const AdminDashboard = () => {
                           <td><span className={`status ${ticket.status?.toLowerCase()}`}>{ticket.status}</span></td>
                           <td>{ticket.createdBy}</td>
                           <td>
+                            {ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS' ? (
+                              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                <select 
+                                  value={ticketAssignments[ticket.id] || ticket.assignedTo || ''}
+                                  onChange={(e) => setTicketAssignments({...ticketAssignments, [ticket.id]: e.target.value})}
+                                  style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                                >
+                                  <option value="">Select Technician</option>
+                                  {technicians.map(tech => (
+                                    <option key={tech.id} value={tech.id}>{tech.fullName || tech.email}</option>
+                                  ))}
+                                </select>
+                                <button 
+                                  className="btn-small btn-primary" 
+                                  onClick={() => handleAssignTicket(ticket)}
+                                  disabled={!ticketAssignments[ticket.id] && !ticket.assignedTo}
+                                >
+                                  Assign
+                                </button>
+                              </div>
+                            ) : (
+                              ticket.assignedTechnicianName || ticket.assignedTo || 'Unassigned'
+                            )}
+                          </td>
+                          <td>
                             <button className="btn-small btn-primary" onClick={() => handleViewTicketDetails(ticket)} style={{ marginRight: '8px' }}>View</button>
                             {ticket.status === 'OPEN' ? (
                               <>

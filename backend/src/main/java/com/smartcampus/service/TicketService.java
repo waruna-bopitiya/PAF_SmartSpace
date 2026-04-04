@@ -220,7 +220,7 @@ public class TicketService {
         ticket.onUpdate();
         ticketRepository.save(ticket);
         
-        // Send notification to other users
+        // Send notification to ticket creator
         if (!userId.equals(ticket.getCreatedBy())) {
             notificationService.createNotification(
                     ticket.getCreatedBy(),
@@ -228,6 +228,18 @@ public class TicketService {
                     "Ticket",
                     NotificationType.NEW_COMMENT_ON_MY_TICKET,
                     "New comment on your ticket",
+                    userName + " added a comment"
+            );
+        }
+        
+        // Send notification to assigned technician
+        if (ticket.getAssignedTo() != null && !userId.equals(ticket.getAssignedTo())) {
+            notificationService.createNotification(
+                    ticket.getAssignedTo(),
+                    ticket.getId(),
+                    "Ticket",
+                    NotificationType.TICKET_COMMENTED,
+                    "New comment on assigned ticket",
                     userName + " added a comment"
             );
         }
