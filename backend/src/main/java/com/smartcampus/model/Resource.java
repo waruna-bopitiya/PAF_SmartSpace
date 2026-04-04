@@ -64,10 +64,3 @@ public class Resource {
     }
 }
 
-enum ResourceType {
-    LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT
-}
-
-enum ResourceStatus {
-    ACTIVE, OUT_OF_SERVICE, MAINTENANCE
-}

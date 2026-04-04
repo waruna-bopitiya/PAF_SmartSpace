@@ -1,6 +1,7 @@
 package com.smartcampus.service;
 
 import com.smartcampus.model.User;
+import com.smartcampus.model.UserRole;
 import com.smartcampus.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,10 +33,10 @@ public class UserService {
         // Create new user
         User newUser = new User();
         newUser.setEmail(email);
-        newUser.setName(name);
+        newUser.setFullName(name);
         newUser.setGoogleId(googleId);
         newUser.setProfilePictureUrl(profilePictureUrl);
-        newUser.setRole("USER");
+        newUser.setRole(UserRole.valueOf("USER"));
         
         return userRepository.save(newUser);
     }

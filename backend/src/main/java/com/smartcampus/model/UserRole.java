@@ -1,4 +1,8 @@
 package com.smartcampus.model;
 
-public class UserRole {
+public enum UserRole {
+    USER,
+    ADMIN,
+    TECHNICIAN,
+    MANAGER
 }

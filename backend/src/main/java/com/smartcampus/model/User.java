@@ -70,8 +70,8 @@ public class User {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
 
-enum UserRole {
-    USER, ADMIN, TECHNICIAN, MANAGER
+    public String getName() {
+        return null;
+    }
 }

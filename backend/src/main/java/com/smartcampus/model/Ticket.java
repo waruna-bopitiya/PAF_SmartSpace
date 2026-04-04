@@ -85,14 +85,3 @@ public class Ticket {
     }
 }
 
-enum TicketCategory {
-    DAMAGE, MALFUNCTION, CLEANING, SAFETY_CONCERN, OTHER
-}
-
-enum TicketPriority {
-    LOW, MEDIUM, HIGH, URGENT
-}
-
-enum TicketStatus {
-    OPEN, IN_PROGRESS, RESOLVED, CLOSED, REJECTED
-}

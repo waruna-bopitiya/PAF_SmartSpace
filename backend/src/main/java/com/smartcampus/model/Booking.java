@@ -76,6 +76,3 @@ public class Booking {
     }
 }
 
-enum BookingStatus {
-    PENDING, APPROVED, REJECTED, CANCELLED
-}
