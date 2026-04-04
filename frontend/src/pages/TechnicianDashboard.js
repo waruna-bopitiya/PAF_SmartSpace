@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useContext } from 'react';
 import AuthContext from '../context/AuthContext';
-import { ticketAPI, notificationAPI } from '../services/api';
+import { ticketAPI, notificationAPI, userAPI } from '../services/api';
 import '../styles/TechnicianDashboard.css';
 
 const TechnicianDashboard = () => {
@@ -128,7 +128,29 @@ const TechnicianDashboard = () => {
         ticketAPI.getComments(ticketId),
       ]);
 
-      setSelectedTicket(ticketRes.data || ticket);
+      const ticketData = ticketRes.data || ticket;
+      let createdByName = ticketData.createdBy;
+      let assignedToName = ticketData.assignedTo;
+
+      try {
+        if (ticketData.createdBy) {
+          const userRes = await userAPI.getById(ticketData.createdBy);
+          createdByName = userRes.data?.fullName || userRes.data?.email || ticketData.createdBy;
+        }
+      } catch (e) {
+        console.error('Failed to fetch creator details', e);
+      }
+
+      try {
+        if (ticketData.assignedTo) {
+          const userRes = await userAPI.getById(ticketData.assignedTo);
+          assignedToName = userRes.data?.fullName || userRes.data?.email || ticketData.assignedTo;
+        }
+      } catch (e) {
+        console.error('Failed to fetch assignee details', e);
+      }
+
+      setSelectedTicket({ ...ticketData, createdByName, assignedToName });
       setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
     } catch (error) {
       const message = error.response?.data?.message || error.response?.data || 'Failed to fetch ticket details.';
@@ -342,37 +364,73 @@ const TechnicianDashboard = () => {
           {!detailsLoading && selectedTicket && (
             <>
               <div className="ticket-details-grid">
-                <div><strong>ID:</strong> {selectedTicket.id || selectedTicket._id || 'N/A'}</div>
-                <div><strong>Title:</strong> {selectedTicket.title || 'N/A'}</div>
-                <div><strong>Category:</strong> {selectedTicket.category || 'N/A'}</div>
-                <div><strong>Priority:</strong> {selectedTicket.priority || 'N/A'}</div>
-                <div><strong>Status:</strong> {selectedTicket.status || 'N/A'}</div>
-                <div><strong>Resource ID:</strong> {selectedTicket.resourceId || 'N/A'}</div>
-                <div><strong>Created By:</strong> {selectedTicket.createdBy || 'N/A'}</div>
-                <div><strong>Assigned To:</strong> {selectedTicket.assignedTo || 'N/A'}</div>
-                <div><strong>Location:</strong> {selectedTicket.location || 'N/A'}</div>
-                <div><strong>Contact Email:</strong> {selectedTicket.preferredContactEmail || 'N/A'}</div>
-                <div><strong>Contact Phone:</strong> {selectedTicket.preferredContactPhone || 'N/A'}</div>
-                <div><strong>Created At:</strong> {formatDate(selectedTicket.createdAt)}</div>
-                <div><strong>Updated At:</strong> {formatDate(selectedTicket.updatedAt)}</div>
-                <div><strong>Resolved At:</strong> {formatDate(selectedTicket.resolvedDate)}</div>
-                <div><strong>Last Response:</strong> {formatDate(selectedTicket.lastResponseAt)}</div>
+                {(selectedTicket.id || selectedTicket._id) && (
+                  <div><strong>ID:</strong> {selectedTicket.id || selectedTicket._id}</div>
+                )}
+                {selectedTicket.title && (
+                  <div><strong>Title:</strong> {selectedTicket.title}</div>
+                )}
+                {selectedTicket.category && (
+                  <div><strong>Category:</strong> {selectedTicket.category}</div>
+                )}
+                {selectedTicket.priority && (
+                  <div><strong>Priority:</strong> {selectedTicket.priority}</div>
+                )}
+                {selectedTicket.status && (
+                  <div><strong>Status:</strong> {selectedTicket.status}</div>
+                )}
+                {selectedTicket.resourceId && (
+                  <div><strong>Resource ID:</strong> {selectedTicket.resourceId}</div>
+                )}
+                {(selectedTicket.createdByName || selectedTicket.createdBy) && (
+                  <div><strong>Created By:</strong> {selectedTicket.createdByName || selectedTicket.createdBy}</div>
+                )}
+                {(selectedTicket.assignedToName || selectedTicket.assignedTo) && (
+                  <div><strong>Assigned To:</strong> {selectedTicket.assignedToName || selectedTicket.assignedTo}</div>
+                )}
+                {selectedTicket.location && (
+                  <div><strong>Location:</strong> {selectedTicket.location}</div>
+                )}
+                {selectedTicket.preferredContactEmail && (
+                  <div><strong>Contact Email:</strong> {selectedTicket.preferredContactEmail}</div>
+                )}
+                {selectedTicket.preferredContactPhone && (
+                  <div><strong>Contact Phone:</strong> {selectedTicket.preferredContactPhone}</div>
+                )}
+                {selectedTicket.createdAt && (
+                  <div><strong>Created At:</strong> {formatDate(selectedTicket.createdAt)}</div>
+                )}
+                {selectedTicket.updatedAt && (
+                  <div><strong>Updated At:</strong> {formatDate(selectedTicket.updatedAt)}</div>
+                )}
+                {selectedTicket.resolvedDate && (
+                  <div><strong>Resolved At:</strong> {formatDate(selectedTicket.resolvedDate)}</div>
+                )}
+                {selectedTicket.lastResponseAt && (
+                  <div><strong>Last Response:</strong> {formatDate(selectedTicket.lastResponseAt)}</div>
+                )}
               </div>
 
-              <div className="ticket-description-block">
-                <h3>Description</h3>
-                <p>{selectedTicket.description || 'No description available.'}</p>
-              </div>
+              {selectedTicket.description && (
+                <div className="ticket-description-block">
+                  <h3>Description</h3>
+                  <p>{selectedTicket.description}</p>
+                </div>
+              )}
 
-              <div className="ticket-description-block">
-                <h3>Resolution Notes</h3>
-                <p>{selectedTicket.resolutionNotes || 'No resolution notes yet.'}</p>
-              </div>
+              {selectedTicket.resolutionNotes && (
+                <div className="ticket-description-block">
+                  <h3>Resolution Notes</h3>
+                  <p>{selectedTicket.resolutionNotes}</p>
+                </div>
+              )}
 
-              <div className="ticket-description-block">
-                <h3>Rejection Reason</h3>
-                <p>{selectedTicket.rejectionReason || 'No rejection reason.'}</p>
-              </div>
+              {selectedTicket.rejectionReason && (
+                <div className="ticket-description-block">
+                  <h3>Rejection Reason</h3>
+                  <p>{selectedTicket.rejectionReason}</p>
+                </div>
+              )}
 
               <div className="ticket-description-block">
                 <h3>Comments ({ticketComments.length})</h3>
