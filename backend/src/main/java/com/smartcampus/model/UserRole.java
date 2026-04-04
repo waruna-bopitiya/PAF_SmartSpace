@@ -2,7 +2,8 @@ package com.smartcampus.model;
 
 public enum UserRole {
 	ADMIN,
-	USER;
+	USER,
+	TECHNICIAN;
 
 	public static UserRole fromString(String value) {
 		for (UserRole role : UserRole.values()) {
