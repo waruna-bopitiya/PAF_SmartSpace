@@ -15,6 +15,8 @@ const TechnicianDashboard = () => {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketComments, setTicketComments] = useState([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
 
   useEffect(() => {
     const fetchTechnicianData = async () => {
@@ -157,6 +159,50 @@ const TechnicianDashboard = () => {
       setFeedback({ type: 'error', message: typeof message === 'string' ? message : 'Failed to fetch ticket details.' });
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || !selectedTicket) return;
+
+    try {
+      setCommentLoading(true);
+      setFeedback({ type: '', message: '' });
+      const ticketId = selectedTicket._id || selectedTicket.id;
+      
+      const payload = {
+        userId: user?.id,
+        userName: user?.fullName || user?.email || 'Technician',
+        userEmail: user?.email,
+        content: newComment,
+        staffComment: true
+      };
+
+      await ticketAPI.addComment(ticketId, payload);
+      
+      const commentsRes = await ticketAPI.getComments(ticketId);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+      setNewComment('');
+      setFeedback({ type: 'success', message: 'Comment added successfully.' });
+    } catch (error) {
+      console.error('Failed to add comment', error);
+      setFeedback({ type: 'error', message: 'Failed to add comment.' });
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    try {
+      const ticketId = selectedTicket._id || selectedTicket.id;
+      await ticketAPI.deleteComment(ticketId, commentId, user?.id);
+      const commentsRes = await ticketAPI.getComments(ticketId);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+    } catch (error) {
+      console.error('Failed to delete comment', error);
+      alert('Failed to delete comment');
     }
   };
 
@@ -435,18 +481,45 @@ const TechnicianDashboard = () => {
               <div className="ticket-description-block">
                 <h3>Comments ({ticketComments.length})</h3>
                 {ticketComments.length > 0 ? (
-                  <ul className="ticket-comment-list">
+                  <ul className="ticket-comment-list" style={{ listStyle: 'none', padding: 0, margin: '10px 0' }}>
                     {ticketComments.map((comment) => (
-                      <li key={comment.id || `${comment.userId}-${comment.createdAt}`}>
-                        <p className="comment-meta">
-                          {comment.userName || comment.userEmail || 'Unknown'} - {formatDate(comment.createdAt)}
-                        </p>
-                        <p className="comment-body">{comment.content}</p>
+                      <li key={comment.id || `${comment.userId}-${comment.createdAt}`} style={{ padding: '10px', backgroundColor: '#f9f9f9', borderLeft: '3px solid #0056b3', marginBottom: '8px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <p className="comment-meta">
+                            <strong>{comment.userName || comment.userEmail || 'Unknown'}</strong> - {formatDate(comment.createdAt)}
+                          </p>
+                          <p className="comment-body">{comment.content}</p>
+                        </div>
+                        {comment.userId === user?.id && (
+                          <button onClick={() => handleDeleteComment(comment.id)} style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em' }}>
+                            Delete
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>
                 ) : (
                   <p className="technician-empty">No comments for this ticket.</p>
+                )}
+                
+                {selectedTicket.status !== 'CLOSED' && selectedTicket.status !== 'RESOLVED' ? (
+                  <form className="add-comment-form" onSubmit={handleAddComment} style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <textarea 
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Add a new comment..."
+                      disabled={commentLoading}
+                      required
+                      style={{ padding: '0.5rem', minHeight: '80px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical' }}
+                    />
+                    <button type="submit" className="btn btn-primary" disabled={commentLoading || !newComment.trim()} style={{ alignSelf: 'flex-start' }}>
+                      {commentLoading ? 'Adding...' : 'Add Comment'}
+                    </button>
+                  </form>
+                ) : (
+                  <div style={{ marginTop: '1rem', padding: '10px', backgroundColor: '#e9ecef', borderRadius: '4px', textAlign: 'center', color: '#6c757d' }}>
+                    This ticket is closed. New comments cannot be added.
+                  </div>
                 )}
               </div>
             </>

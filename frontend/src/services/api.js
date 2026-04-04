@@ -159,8 +159,10 @@ export const ticketAPI = {
     apiClient.put(`/tickets/${id}/reject`, { reason }),
   close: (id, resolutionNotes) =>
     apiClient.put(`/tickets/${id}/close`, { resolutionNotes }),
-  addComment: (ticketId, content) =>
-    apiClient.post(`/tickets/${ticketId}/comments`, { content }),
+  addComment: (ticketId, commentData) =>
+    apiClient.post(`/tickets/${ticketId}/comments`, commentData),
+  deleteComment: (ticketId, commentId, userId) =>
+    apiClient.delete(`/tickets/${ticketId}/comments/${commentId}`, { params: { userId } }),
   delete: (id) =>
     apiClient.delete(`/tickets/${id}`),
 };

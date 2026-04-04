@@ -243,6 +243,27 @@ public class TicketService {
     }
 
     /**
+     * Delete comment from ticket
+     */
+    public void deleteComment(String ticketId, String commentId, String userId) {
+        Ticket ticket = getTicketById(ticketId);
+        TicketComment comment = ticketCommentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
+                
+        if (!comment.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Only the author can delete this comment");
+        }
+        
+        ticketCommentRepository.delete(comment);
+        
+        if (ticket.getCommentIds() != null) {
+            ticket.getCommentIds().remove(commentId);
+            ticket.onUpdate();
+            ticketRepository.save(ticket);
+        }
+    }
+
+    /**
      * Add attachment to ticket
      */
     public Ticket addAttachment(String ticketId, String attachmentId) {

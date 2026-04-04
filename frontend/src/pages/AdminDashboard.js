@@ -33,6 +33,12 @@ const AdminDashboard = () => {
   // Tickets Management
   const [tickets, setTickets] = useState([]);
   const [ticketFilter, setTicketFilter] = useState('OPEN');
+  const [ticketDetails, setTicketDetails] = useState(null);
+  const [showTicketDetails, setShowTicketDetails] = useState(false);
+  const [ticketComments, setTicketComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [ticketAssignments, setTicketAssignments] = useState({});
   // Resources Management
   const [resources, setResources] = useState([]);
   const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
@@ -320,6 +326,63 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error rejecting ticket:', error);
       alert('Failed to reject ticket');
+    }
+  };
+
+  const handleViewTicketDetails = async (ticket) => {
+    try {
+      const ticketId = ticket._id || ticket.id;
+      const [ticketRes, commentsRes] = await Promise.all([
+        ticketAPI.getById(ticketId),
+        ticketAPI.getComments(ticketId),
+      ]);
+      setTicketDetails(ticketRes.data);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+      setShowTicketDetails(true);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to load ticket details');
+    }
+  };
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || !ticketDetails) return;
+
+    try {
+      setCommentLoading(true);
+      const ticketId = ticketDetails.id || ticketDetails._id;
+      
+      const payload = {
+        userId: user?.id,
+        userName: user?.fullName || user?.email || 'Admin',
+        userEmail: user?.email,
+        content: newComment,
+        staffComment: true
+      };
+
+      await ticketAPI.addComment(ticketId, payload);
+      const commentsRes = await ticketAPI.getComments(ticketId);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+      setNewComment('');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to add comment');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    try {
+      const ticketId = ticketDetails.id || ticketDetails._id;
+      await ticketAPI.deleteComment(ticketId, commentId, user?.id);
+      const commentsRes = await ticketAPI.getComments(ticketId);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+    } catch (error) {
+      console.error(error);
+      alert('Failed to delete comment');
     }
   };
 
@@ -769,6 +832,7 @@ const AdminDashboard = () => {
                           <td><span className={`status ${ticket.status?.toLowerCase()}`}>{ticket.status}</span></td>
                           <td>{ticket.createdBy}</td>
                           <td>
+                            <button className="btn-small btn-primary" onClick={() => handleViewTicketDetails(ticket)} style={{ marginRight: '8px' }}>View</button>
                             {ticket.status === 'OPEN' ? (
                               <>
                                 <button
@@ -1029,6 +1093,101 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+      {/* Resource Modals and Other Content... */}
+      {/* Ticket Details Modal */}
+      {showTicketDetails && ticketDetails && (
+        <div className="modal-overlay" onClick={() => setShowTicketDetails(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{ticketDetails.title}</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowTicketDetails(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              <div className="detail-row" style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
+                <div className="detail-field">
+                  <label style={{ fontWeight: 'bold' }}>Status</label>
+                  <div><span className={`status ${ticketDetails.status?.toLowerCase()}`}>{ticketDetails.status}</span></div>
+                </div>
+                <div className="detail-field">
+                  <label style={{ fontWeight: 'bold' }}>Priority</label>
+                  <div><span className={`priority ${ticketDetails.priority?.toLowerCase()}`}>{ticketDetails.priority}</span></div>
+                </div>
+                <div className="detail-field">
+                  <label style={{ fontWeight: 'bold' }}>Category</label>
+                  <div><span>{ticketDetails.category}</span></div>
+                </div>
+              </div>
+
+              <div className="detail-section" style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Description</label>
+                <p className="description-text">{ticketDetails.description}</p>
+              </div>
+
+              <div className="detail-section" style={{ marginTop: '20px' }}>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Comments ({ticketComments.length})</label>
+                {ticketComments.length > 0 ? (
+                  <ul className="ticket-comment-list" style={{ listStyle: 'none', padding: 0, margin: '10px 0' }}>
+                    {ticketComments.map((comment) => (
+                      <li key={comment.id || `${comment.userId}-${comment.createdAt}`} style={{ padding: '10px', backgroundColor: '#f9f9f9', borderLeft: '3px solid #0056b3', marginBottom: '8px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <p style={{ margin: '0 0 5px 0', fontSize: '0.85em', color: '#666' }}>
+                            <strong>{comment.userName || comment.userEmail || 'Unknown'}</strong> - {new Date(comment.createdAt).toLocaleString()}
+                          </p>
+                          <p style={{ margin: 0 }}>{comment.content}</p>
+                        </div>
+                        {comment.userId === user?.id && (
+                          <button onClick={() => handleDeleteComment(comment.id)} style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em' }}>
+                            Delete
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ color: '#888', fontStyle: 'italic', margin: '10px 0' }}>No comments for this ticket.</p>
+                )}
+                
+                {ticketDetails.status !== 'CLOSED' && ticketDetails.status !== 'RESOLVED' ? (
+                  <form onSubmit={handleAddComment} style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <textarea 
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Add a new comment..."
+                      disabled={commentLoading}
+                      required
+                      style={{ padding: '0.5rem', minHeight: '80px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical' }}
+                    />
+                    <button type="submit" className="btn btn-primary" disabled={commentLoading || !newComment.trim()} style={{ alignSelf: 'flex-start' }}>
+                      {commentLoading ? 'Adding...' : 'Add Comment'}
+                    </button>
+                  </form>
+                ) : (
+                  <div style={{ marginTop: '1rem', padding: '10px', backgroundColor: '#e9ecef', borderRadius: '4px', textAlign: 'center', color: '#6c757d' }}>
+                    This ticket is closed. New comments cannot be added.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowTicketDetails(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -296,6 +296,26 @@ public class TicketController {
     }
 
     /**
+     * Delete comment from ticket
+     * DELETE /tickets/{id}/comments/{commentId}?userId={userId}
+     */
+    @DeleteMapping("/{id}/comments/{commentId}")
+    public ResponseEntity<?> deleteComment(@PathVariable String id,
+                                           @PathVariable String commentId,
+                                           @RequestParam String userId) {
+        try {
+            ticketService.deleteComment(id, commentId, userId);
+            return ResponseEntity.ok("Comment deleted successfully");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Error deleting comment: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Error deleting comment: " + e.getMessage());
+        }
+    }
+
+    /**
      * Delete ticket
      * DELETE /tickets/{id}
      */

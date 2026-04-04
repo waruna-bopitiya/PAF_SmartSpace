@@ -16,6 +16,9 @@ const Tickets = () => {
   const [success, setSuccess] = useState('');
   const [ticketDetails, setTicketDetails] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [ticketComments, setTicketComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
   // QR scan pre-fill state
   const [qrResourceId, setQrResourceId] = useState('');
   const [qrResourceName, setQrResourceName] = useState('');
@@ -164,9 +167,15 @@ const Tickets = () => {
     try {
       console.log('Fetching ticket details for ID:', ticketId);
       setError('');
-      const response = await ticketAPI.getById(ticketId);
-      console.log('Ticket details response:', response.data);
-      setTicketDetails(response.data);
+      
+      const [ticketRes, commentsRes] = await Promise.all([
+        ticketAPI.getById(ticketId),
+        ticketAPI.getComments(ticketId),
+      ]);
+      
+      console.log('Ticket details response:', ticketRes.data);
+      setTicketDetails(ticketRes.data);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
       setShowDetails(true);
     } catch (err) {
       console.error('Error fetching ticket details:', err);
@@ -174,6 +183,48 @@ const Tickets = () => {
       console.error('Error data:', err.response?.data);
       const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to load ticket details';
       setError(typeof errorMsg === 'string' ? errorMsg : 'Failed to load ticket details. Please try again.');
+    }
+  };
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || !ticketDetails) return;
+
+    try {
+      setCommentLoading(true);
+      const ticketId = ticketDetails.id || ticketDetails._id;
+      
+      const payload = {
+        userId: user?.id,
+        userName: user?.fullName || user?.email || 'User',
+        userEmail: user?.email,
+        content: newComment,
+        staffComment: false
+      };
+
+      await ticketAPI.addComment(ticketId, payload);
+      
+      const commentsRes = await ticketAPI.getComments(ticketId);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+      setNewComment('');
+    } catch (error) {
+      console.error('Failed to add comment', error);
+      alert('Failed to add comment');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    try {
+      const ticketId = ticketDetails.id || ticketDetails._id;
+      await ticketAPI.deleteComment(ticketId, commentId, user?.id);
+      const commentsRes = await ticketAPI.getComments(ticketId);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+    } catch (error) {
+      console.error('Failed to delete comment', error);
+      alert('Failed to delete comment');
     }
   };
 
@@ -529,6 +580,51 @@ const Tickets = () => {
                   <span>{ticketDetails.preferredContactPhone}</span>
                 </div>
               )}
+
+              <div className="detail-section" style={{ marginTop: '20px' }}>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Comments ({ticketComments.length})</label>
+                {ticketComments.length > 0 ? (
+                  <ul className="ticket-comment-list" style={{ listStyle: 'none', padding: 0, margin: '10px 0' }}>
+                    {ticketComments.map((comment) => (
+                      <li key={comment.id || `${comment.userId}-${comment.createdAt}`} style={{ padding: '10px', backgroundColor: '#f9f9f9', borderLeft: '3px solid #0056b3', marginBottom: '8px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <p style={{ margin: '0 0 5px 0', fontSize: '0.85em', color: '#666' }}>
+                            <strong>{comment.userName || comment.userEmail || 'Unknown'}</strong> - {new Date(comment.createdAt).toLocaleString()}
+                          </p>
+                          <p style={{ margin: 0 }}>{comment.content}</p>
+                        </div>
+                        {comment.userId === user?.id && (
+                          <button onClick={() => handleDeleteComment(comment.id)} style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em' }}>
+                            Delete
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ color: '#888', fontStyle: 'italic', margin: '10px 0' }}>No comments for this ticket.</p>
+                )}
+                
+                {ticketDetails.status !== 'CLOSED' && ticketDetails.status !== 'RESOLVED' ? (
+                  <form onSubmit={handleAddComment} style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <textarea 
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Add a new comment..."
+                      disabled={commentLoading}
+                      required
+                      style={{ padding: '0.5rem', minHeight: '80px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical' }}
+                    />
+                    <button type="submit" className="btn btn-primary" disabled={commentLoading || !newComment.trim()} style={{ alignSelf: 'flex-start' }}>
+                      {commentLoading ? 'Adding...' : 'Add Comment'}
+                    </button>
+                  </form>
+                ) : (
+                  <div style={{ marginTop: '1rem', padding: '10px', backgroundColor: '#e9ecef', borderRadius: '4px', textAlign: 'center', color: '#6c757d' }}>
+                    This ticket is closed. New comments cannot be added.
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="modal-footer">
