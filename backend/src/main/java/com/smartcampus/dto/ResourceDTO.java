@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+// Data Transfer Object for Resource entity, used for API communication
 public class ResourceDTO {
     private String id;
 
