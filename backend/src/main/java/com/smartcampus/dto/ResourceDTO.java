@@ -9,7 +9,7 @@ import java.util.List;
 // Data Transfer Object for Resource entity, used for API communication
 public class ResourceDTO {
     private String id;
-
+    // Validation annotations ensure data integrity when creating/updating resources
     @NotBlank(message = "Resource name is required")
     @Size(min = 3, max = 100, message = "Name must be between 3 and 100 characters")
     private String name;
