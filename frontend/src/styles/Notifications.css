@@ -104,32 +104,60 @@
 }
 
 .filter-tabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px;
-  background: #eaf4f3;
-  border: 1px solid #d0e7e4;
-  border-radius: 14px;
-  margin-bottom: 18px;
+  display: flex;
+  gap: 24px;
+  margin: 0 0 24px 0;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
-  border: none;
   background: transparent;
-  color: #32605b;
-  font-weight: 600;
-  font-size: 0.9rem;
-  border-radius: 10px;
-  padding: 10px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  padding: 0 4px 12px 4px;
+  border-radius: 0;
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: all 0.2s ease;
+  margin-bottom: -1px;
+  display: flex;
+  align-items: center;
+}
+
+.tab:hover {
+  color: #0f172a;
+  border-bottom-color: #cbd5e1;
 }
 
 .tab.active {
-  background: #ffffff;
+  background: transparent;
   color: #0f766e;
-  box-shadow: 0 2px 10px rgba(15, 118, 110, 0.15);
+  border-bottom-color: #0f766e;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.notif-badge-danger {
+  background-color: #ef4444;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
 }
 
 .notifications-list {
@@ -345,12 +373,13 @@
 
   .filter-tabs {
     width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 
   .tab {
-    width: 100%;
-    text-align: center;
+    width: auto;
+    white-space: nowrap;
   }
 }

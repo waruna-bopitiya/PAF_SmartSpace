@@ -41,16 +41,7 @@
   display: none;
 }
 
-/* Navigation Tabs */
-.admin-nav {
-  display: flex;
-  gap: 12px;
-  flex: 1;
-  justify-content: flex-start;
-  overflow-x: auto;
-  padding-bottom: 0;
-  flex-wrap: wrap;
-}
+/* Removed duplicate admin-nav */
 
 /* Top Right Profile */
 .admin-user-profile-top {
@@ -138,36 +129,62 @@
 /* Navigation Tabs */
 .admin-nav {
   display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  flex-wrap: wrap;
-  flex: 1;
+  gap: 24px;
+  height: 100%;
+  align-items: stretch;
   padding: 0 20px;
-  align-items: center;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.admin-nav::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .admin-nav-btn {
-  padding: 12px 20px;
-  border: 1px solid #d1d5db;
-  background: #f9fafb;
-  color: #374151;
-  border-radius: 6px;
-  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0 8px;
+  color: #6b7280;
   font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px; /* offset for bottom border alignment */
 }
 
 .admin-nav-btn:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
+  color: #1f2937;
+  border-bottom-color: #d1d5db;
 }
 
 .admin-nav-btn.active {
-  background: #3b82f6;
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+  font-weight: 600;
+}
+
+.badge-danger {
+  background-color: #ef4444;
   color: white;
-  border-color: #3b82f6;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
 }
 
 /* Navigation Wrapper with User Profile */

@@ -4,6 +4,7 @@ import com.smartcampus.exception.ResourceNotFoundException;
 import com.smartcampus.model.*;
 import com.smartcampus.repository.TicketCommentRepository;
 import com.smartcampus.repository.TicketRepository;
+import com.smartcampus.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,9 @@ public class TicketService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * Get all tickets with pagination
@@ -86,7 +90,22 @@ public class TicketService {
     public Ticket createTicket(Ticket ticket) {
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setLastResponseAt(LocalDateTime.now());
-        return ticketRepository.save(ticket);
+        Ticket savedTicket = ticketRepository.save(ticket);
+        
+        // Notify Admins
+        List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+        for (User admin : admins) {
+            notificationService.createNotification(
+                    admin.getId(),
+                    savedTicket.getId(),
+                    "Ticket",
+                    NotificationType.SYSTEM_ALERT,
+                    "New Ticket Created",
+                    "A new ticket has been submitted: " + savedTicket.getTitle()
+            );
+        }
+        
+        return savedTicket;
     }
 
     /**
@@ -125,6 +144,16 @@ public class TicketService {
                 NotificationType.TICKET_ASSIGNED,
                 "Your ticket has been assigned",
                 "A technician has been assigned to your ticket"
+        );
+        
+        // Send notification to the assigned technician
+        notificationService.createNotification(
+                technicianId,
+                ticket.getId(),
+                "Ticket",
+                NotificationType.TICKET_ASSIGNED,
+                "New Ticket Assigned",
+                "You have been assigned to a new ticket: " + ticket.getTitle()
         );
         
         return savedTicket;

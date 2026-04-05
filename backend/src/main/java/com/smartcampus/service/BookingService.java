@@ -7,6 +7,9 @@ import com.smartcampus.model.BookingStatus;
 import com.smartcampus.model.Notification;
 import com.smartcampus.model.NotificationType;
 import com.smartcampus.repository.BookingRepository;
+import com.smartcampus.repository.UserRepository;
+import com.smartcampus.model.User;
+import com.smartcampus.model.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +29,9 @@ public class BookingService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * Get all bookings with pagination
@@ -138,6 +144,20 @@ public class BookingService {
             booking.setStatus(BookingStatus.PENDING);
             
             Booking savedBooking = bookingRepository.save(booking);
+            
+            // Notify Admins
+            List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+            for (User admin : admins) {
+                notificationService.createNotification(
+                        admin.getId(),
+                        savedBooking.getId(),
+                        "Booking",
+                        NotificationType.SYSTEM_ALERT,
+                        "New Booking Requested",
+                        "A new booking has been requested for resource: " + savedBooking.getResourceId()
+                );
+            }
+            
             return savedBooking;
         } catch (BookingConflictException e) {
             throw e;

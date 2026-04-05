@@ -30,31 +30,43 @@
 
 .technician-panel-tabs {
   display: flex;
-  gap: 10px;
-  margin: 0;
-  flex-wrap: wrap;
+  gap: 24px;
+  margin: 0 0 24px 0;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.technician-panel-tabs::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .technician-panel-tab {
-  border: 1px solid #dbe4ea;
-  background: #ffffff;
-  color: #0f172a;
-  padding: 10px 14px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 700;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  padding: 0 4px 12px 4px;
+  border-radius: 0;
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  margin-bottom: -1px; /* Overlap with the container's bottom border */
 }
 
 .technician-panel-tab.active {
-  background: #0f766e;
-  border-color: #0f766e;
-  color: #ffffff;
+  background: transparent;
+  color: #0f766e;
+  border-bottom-color: #0f766e;
+  font-weight: 600;
 }
 
 .technician-panel-tab:hover {
-  transform: translateY(-1px);
+  color: #0f172a;
+  border-bottom-color: #cbd5e1;
+  transform: none;
 }
 
 .technician-stats-grid {
@@ -382,10 +394,13 @@
 
   .technician-panel-tabs {
     width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 
   .technician-panel-tab {
-    width: 100%;
+    width: auto;
+    white-space: nowrap;
   }
 
   .technician-notifications-header,

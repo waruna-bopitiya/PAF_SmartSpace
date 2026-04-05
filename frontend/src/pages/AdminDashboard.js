@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { userAPI, bookingAPI, ticketAPI, resourceAPI } from '../services/api';
+import { userAPI, bookingAPI, ticketAPI, resourceAPI, notificationAPI } from '../services/api';
 import ResourceQRPrint from './ResourceQRPrint';
 import { RESOURCE_TYPES, formatResourceType } from '../config/resourceTypes';
 import '../styles/AdminDashboard.css';
@@ -59,6 +59,10 @@ const AdminDashboard = () => {
     totalResources: 0,
   });
 
+  // Notifications
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+
   // Fetch errors
   const [fetchError, setFetchError] = useState('');
 
@@ -114,11 +118,26 @@ const AdminDashboard = () => {
       errors.push(`Resources: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
     }
 
+    // ── Notifications ──
+    if (user?.id || user?.email) {
+      try {
+        const userId = user.id || user.email;
+        const [notifRes, unreadRes] = await Promise.all([
+          notificationAPI.getAll(userId, 0, 20),
+          notificationAPI.getUnreadCount(userId)
+        ]);
+        setNotifications(notifRes.data?.content || notifRes.data || []);
+        setUnreadNotificationsCount(unreadRes.data?.unreadCount || 0);
+      } catch (e) {
+        console.error('Notifications fetch error:', e);
+      }
+    }
+
     if (errors.length > 0) {
       setFetchError(`Some data could not be loaded — ${errors.join(' | ')}`);
     }
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchData();
@@ -550,6 +569,22 @@ const AdminDashboard = () => {
             onClick={() => setActiveTab('resources')}
           >
             Resources
+          </button>
+          <button
+            className={`admin-nav-btn ${activeTab === 'notifications' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('notifications');
+              if (unreadNotificationsCount > 0) {
+                // Optionally mark all as read when opening tab
+              }
+            }}
+          >
+            Notifications
+            {unreadNotificationsCount > 0 && (
+              <span className="badge-danger">
+                {unreadNotificationsCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -1069,6 +1104,89 @@ const AdminDashboard = () => {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Notifications Tab */}
+        {activeTab === 'notifications' && (
+          <div className="admin-section">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2>System Notifications</h2>
+              {unreadNotificationsCount > 0 && (
+                <button 
+                  className="btn btn-secondary"
+                  onClick={async () => {
+                    try {
+                      await notificationAPI.markAllAsRead(user?.id || user?.email);
+                      setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+                      setUnreadNotificationsCount(0);
+                    } catch (e) {
+                      console.error('Failed to mark all as read', e);
+                    }
+                  }}
+                >
+                  Mark All as Read
+                </button>
+              )}
+            </div>
+            
+            <div className="notifications-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {notifications.length > 0 ? (
+                [...notifications]
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .map((notification) => (
+                  <div 
+                    key={notification.id} 
+                    className={`notification-card ${!notification.isRead ? 'unread' : ''}`}
+                    style={{
+                      padding: '15px',
+                      backgroundColor: notification.isRead ? '#f8f9fa' : '#e3f2fd',
+                      borderLeft: `4px solid ${notification.isRead ? '#ccc' : '#0056b3'}`,
+                      borderRadius: '4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '5px',
+                      cursor: 'pointer'
+                    }}
+                    onClick={async () => {
+                      if (!notification.isRead) {
+                        try {
+                          await notificationAPI.markAsRead(notification.id);
+                          setNotifications(notifications.map(n => 
+                            n.id === notification.id ? { ...n, isRead: true } : n
+                          ));
+                          setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
+                        } catch (e) {
+                          console.error('Failed to mark as read', e);
+                        }
+                      }
+                      
+                      // Navigate based on type
+                      if (notification.type.includes('TICKET')) {
+                        setActiveTab('tickets');
+                      } else if (notification.type.includes('BOOKING')) {
+                        setActiveTab('bookings');
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <strong style={{ fontSize: '1.1em' }}>{notification.title}</strong>
+                      <span style={{ fontSize: '0.85em', color: '#666' }}>
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, color: '#444' }}>{notification.message}</p>
+                    <span style={{ fontSize: '0.8em', color: '#888', fontWeight: 'bold' }}>
+                      {notification.type.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                  <p style={{ color: '#6c757d', margin: 0 }}>No notifications found.</p>
+                </div>
+              )}
             </div>
           </div>
         )}
