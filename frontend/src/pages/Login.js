@@ -54,7 +54,7 @@ const Login = () => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+    window.location.href = 'http://localhost:8080/api/oauth2/authorization/google';
   };
 
   return (

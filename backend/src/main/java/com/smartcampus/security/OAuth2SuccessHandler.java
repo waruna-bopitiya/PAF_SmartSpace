@@ -25,7 +25,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     @Autowired
     private UserService userService;
 
-    private static final String REDIRECT_URL = "http://localhost:3000/dashboard";
+    private static final String REDIRECT_URL = "http://localhost:3000/auth-success";
 
     @Override
     public void onAuthenticationSuccess(

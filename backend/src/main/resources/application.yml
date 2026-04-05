@@ -1,14 +1,14 @@
 spring:
   application:
-    name: smart-campus-hub-api
+    name: pafdb
   
   data:
     mongodb:
-      uri: mongodb+srv://thewnima12hn_db_user:<db_password>@pafdb.2676cf5.mongodb.net/?appName=pafdb
+      uri: mongodb+srv://waruna:waruna@pafdb.2676cf5.mongodb.net/?appName=pafdb
       # Alternative configuration (if not using URI):
       # host: localhost
       # port: 27017
-      # database: smart_campus_db
+      database: pafdb
       # username: root (if authentication is enabled)
       # password: root
   
@@ -22,9 +22,9 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:your_google_client_id}
-            client-secret: ${GOOGLE_CLIENT_SECRET:your_google_client_secret}
-            redirect-uri: http://localhost:8080/login/oauth2/code/google
+            client-id: ${GOOGLE_CLIENT_ID:726925929549-olu77b1316hcc6piav552n3til34iefn.apps.googleusercontent.com}
+            client-secret: ${GOOGLE_CLIENT_SECRET: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}
+            redirect-uri: http://localhost:8080/api/login/oauth2/code/google
             scope: profile,email
         provider:
           google:
@@ -48,7 +48,7 @@ logging:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:smart-campus-hub-secret-key-2026-please-change-in-production}
+    secret: ${JWT_SECRET:z6568962657d483c65c6c6d56686a63586b65646351666c56616462635c656162}
     expiration: 86400000
   file:
     upload-dir: uploads/
