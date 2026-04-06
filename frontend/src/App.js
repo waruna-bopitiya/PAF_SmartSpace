@@ -9,7 +9,7 @@ import Bookings from './pages/Bookings';
 import Tickets from './pages/Tickets';
 import Notifications from './pages/Notifications';
 import ProtectedRoute from './components/ProtectedRoute';
-import AuthSuccess from './pages/AuthSuccess'; // AuthSuccess component eka import karanna
+import AuthSuccess from './pages/AuthSuccess';
 import './styles/App.css';
 
 function App() {
@@ -17,13 +17,13 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          {/* Public Routes - Mewa ProtectedRoute ekakin cover karanne na */}
+          {/* 1. Public Routes - Mewa ProtectedRoute ekakin cover karanne na */}
           <Route path="/login" element={<Login />} />
           
-          {/* Google Login eken passe token eka save karana thana (Meka Public thiyenna ona) */}
+          {/* Google Login iwara wela token eka save karanna ena path eka */}
           <Route path="/auth-success" element={<AuthSuccess />} />
 
-          {/* Protected Routes - Mewa okkoma authentication ona */}
+          {/* 2. Protected Routes - Mewa authenticated ayaata witharay */}
           <Route
             path="/"
             element={
@@ -79,7 +79,7 @@ function App() {
             }
           />
 
-          {/* Wena ona path ekaka giyoth Home (Dashboard) ekata redirect karanna */}
+          {/* 3. Catch-all - Wena ona path ekakata giyoth root (/) ekata yawanna */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

@@ -4,12 +4,16 @@ import { useAuth } from '../hooks/useAuth';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
+  
+  // Check both context state and localStorage for token
+  const jwtToken = localStorage.getItem('jwtToken');
+  const hasValidAuth = isAuthenticated || !!jwtToken;
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (hasValidAuth) {
+    return children;
   }
 
-  return children;
+  return <Navigate to="/login" replace />;
 };
 
 export default ProtectedRoute;

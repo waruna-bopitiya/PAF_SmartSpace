@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { loginWithEmail, validateToken } from '../services/api';
+import { loginWithEmail } from '../services/api';
 import '../styles/Login.css';
 
 const Login = () => {
@@ -11,21 +11,6 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-
-  // Handle OAuth callback
-  useEffect(() => {
-    const token = searchParams.get('token');
-    if (token) {
-      // Token received from Google OAuth redirect
-      validateToken(token).then((response) => {
-        login(response.data, token);
-        navigate('/');
-      }).catch((err) => {
-        setError('OAuth login failed. Please try again.');
-      });
-    }
-  }, [searchParams, login, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
