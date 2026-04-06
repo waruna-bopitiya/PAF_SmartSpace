@@ -1,5 +1,6 @@
 package com.smartcampus.model;
 
+// enum representing the type of a resource
 public enum ResourceType {
     LECTURE_HALL,
     LAB,
