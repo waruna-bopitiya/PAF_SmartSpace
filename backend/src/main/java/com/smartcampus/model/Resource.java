@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+// Resource entity representing a campus resource
 @Document(collection = "resources")
 public class Resource {
     @Id
@@ -52,6 +53,7 @@ public class Resource {
     public Resource() {
     }
 
+    // Constructor with all fields for easy instantiation
     public Resource(String id, String name, String description, ResourceType type, int capacity, String location, ResourceStatus status, String imageUrl, LocalDateTime weekdayOpenTime, LocalDateTime weekdayCloseTime, LocalDateTime weekendOpenTime, LocalDateTime weekendCloseTime, String contactPerson, String phoneNumber, String email, List<String> tags, LocalDateTime createdAt, LocalDateTime updatedAt, String createdBy) {
         this.id = id;
         this.name = name;
