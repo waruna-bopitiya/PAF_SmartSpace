@@ -1,5 +1,6 @@
 package com.smartcampus.model;
 
+// Enum representing the status of a resource 
 public enum ResourceStatus {
     ACTIVE,
     OUT_OF_SERVICE,
