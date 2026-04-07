@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
+// Service class for managing campus resources (e.g., rooms, equipment)
 @Service
 public class ResourceService {
 
