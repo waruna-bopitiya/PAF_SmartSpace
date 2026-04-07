@@ -371,7 +371,7 @@ const AdminDashboard = () => {
     try {
       setCommentLoading(true);
       const ticketId = ticketDetails.id || ticketDetails._id;
-      
+
       const payload = {
         userId: user?.id,
         userName: user?.fullName || user?.email || 'Admin',
@@ -768,49 +768,49 @@ const AdminDashboard = () => {
                     bookings
                       .filter(b => bookingFilter === 'ALL' || b.status === bookingFilter)
                       .map(booking => (
-                      <tr key={booking.id}>
-                        <td>{booking.id?.substring(0, 8)}...</td>
-                        <td>{booking.resourceId}</td>
-                        <td>{booking.userId}</td>
-                        <td>{new Date(booking.startTime || booking.startDateTime).toLocaleString()}</td>
-                        <td>{new Date(booking.endTime || booking.endDateTime).toLocaleString()}</td>
-                        <td>
-                          <select 
-                            value={booking.status}
-                            onChange={(e) => handleUpdateBookingStatus(booking.id, e.target.value)}
-                            className="status-dropdown"
-                            style={{
-                              padding: '5px 8px',
-                              borderRadius: '4px',
-                              border: '1px solid #ddd',
-                              backgroundColor: 
-                                booking.status === 'APPROVED' ? '#d4edda' :
-                                booking.status === 'PENDING' ? '#fff3cd' :
-                                booking.status === 'REJECTED' ? '#f8d7da' :
-                                '#ffffff'
-                            }}
-                          >
-                            <option value="PENDING">Pending</option>
-                            <option value="APPROVED">Approved</option>
-                            <option value="REJECTED">Rejected</option>
-                          </select>
-                        </td>
-                        <td>
-                          {booking.status === 'PENDING' ? (
-                            <>
-                              <button 
-                                className="btn-small btn-success" 
-                                onClick={() => handleUpdateBookingStatus(booking.id, 'APPROVED')}
-                              >
-                                Quick Approve
-                              </button>
-                            </>
-                          ) : (
-                            <button className="btn-small btn-danger" onClick={() => handleDeleteBooking(booking.id)}>Delete</button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                        <tr key={booking.id}>
+                          <td>{booking.id?.substring(0, 8)}...</td>
+                          <td>{booking.resourceId}</td>
+                          <td>{booking.userId}</td>
+                          <td>{new Date(booking.startTime || booking.startDateTime).toLocaleString()}</td>
+                          <td>{new Date(booking.endTime || booking.endDateTime).toLocaleString()}</td>
+                          <td>
+                            <select
+                              value={booking.status}
+                              onChange={(e) => handleUpdateBookingStatus(booking.id, e.target.value)}
+                              className="status-dropdown"
+                              style={{
+                                padding: '5px 8px',
+                                borderRadius: '4px',
+                                border: '1px solid #ddd',
+                                backgroundColor:
+                                  booking.status === 'APPROVED' ? '#d4edda' :
+                                    booking.status === 'PENDING' ? '#fff3cd' :
+                                      booking.status === 'REJECTED' ? '#f8d7da' :
+                                        '#ffffff'
+                              }}
+                            >
+                              <option value="PENDING">Pending</option>
+                              <option value="APPROVED">Approved</option>
+                              <option value="REJECTED">Rejected</option>
+                            </select>
+                          </td>
+                          <td>
+                            {booking.status === 'PENDING' ? (
+                              <>
+                                <button
+                                  className="btn-small btn-success"
+                                  onClick={() => handleUpdateBookingStatus(booking.id, 'APPROVED')}
+                                >
+                                  Quick Approve
+                                </button>
+                              </>
+                            ) : (
+                              <button className="btn-small btn-danger" onClick={() => handleDeleteBooking(booking.id)}>Delete</button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
                   ) : (
                     <tr><td colSpan="7" className="text-center">No bookings found</td></tr>
                   )}
@@ -869,9 +869,9 @@ const AdminDashboard = () => {
                           <td>
                             {ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS' ? (
                               <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                                <select 
+                                <select
                                   value={ticketAssignments[ticket.id] || ticket.assignedTo || ''}
-                                  onChange={(e) => setTicketAssignments({...ticketAssignments, [ticket.id]: e.target.value})}
+                                  onChange={(e) => setTicketAssignments({ ...ticketAssignments, [ticket.id]: e.target.value })}
                                   style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
                                 >
                                   <option value="">Select Technician</option>
@@ -879,8 +879,8 @@ const AdminDashboard = () => {
                                     <option key={tech.id} value={tech.id}>{tech.fullName || tech.email}</option>
                                   ))}
                                 </select>
-                                <button 
-                                  className="btn-small btn-primary" 
+                                <button
+                                  className="btn-small btn-primary"
                                   onClick={() => handleAssignTicket(ticket)}
                                   disabled={!ticketAssignments[ticket.id] && !ticket.assignedTo}
                                 >
@@ -1114,7 +1114,7 @@ const AdminDashboard = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2>System Notifications</h2>
               {unreadNotificationsCount > 0 && (
-                <button 
+                <button
                   className="btn btn-secondary"
                   onClick={async () => {
                     try {
@@ -1130,58 +1130,58 @@ const AdminDashboard = () => {
                 </button>
               )}
             </div>
-            
+
             <div className="notifications-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {notifications.length > 0 ? (
                 [...notifications]
                   .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                   .map((notification) => (
-                  <div 
-                    key={notification.id} 
-                    className={`notification-card ${!notification.isRead ? 'unread' : ''}`}
-                    style={{
-                      padding: '15px',
-                      backgroundColor: notification.isRead ? '#f8f9fa' : '#e3f2fd',
-                      borderLeft: `4px solid ${notification.isRead ? '#ccc' : '#0056b3'}`,
-                      borderRadius: '4px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '5px',
-                      cursor: 'pointer'
-                    }}
-                    onClick={async () => {
-                      if (!notification.isRead) {
-                        try {
-                          await notificationAPI.markAsRead(notification.id);
-                          setNotifications(notifications.map(n => 
-                            n.id === notification.id ? { ...n, isRead: true } : n
-                          ));
-                          setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
-                        } catch (e) {
-                          console.error('Failed to mark as read', e);
+                    <div
+                      key={notification.id}
+                      className={`notification-card ${!notification.isRead ? 'unread' : ''}`}
+                      style={{
+                        padding: '15px',
+                        backgroundColor: notification.isRead ? '#f8f9fa' : '#e3f2fd',
+                        borderLeft: `4px solid ${notification.isRead ? '#ccc' : '#0056b3'}`,
+                        borderRadius: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '5px',
+                        cursor: 'pointer'
+                      }}
+                      onClick={async () => {
+                        if (!notification.isRead) {
+                          try {
+                            await notificationAPI.markAsRead(notification.id);
+                            setNotifications(notifications.map(n =>
+                              n.id === notification.id ? { ...n, isRead: true } : n
+                            ));
+                            setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
+                          } catch (e) {
+                            console.error('Failed to mark as read', e);
+                          }
                         }
-                      }
-                      
-                      // Navigate based on type
-                      if (notification.type.includes('TICKET')) {
-                        setActiveTab('tickets');
-                      } else if (notification.type.includes('BOOKING')) {
-                        setActiveTab('bookings');
-                      }
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <strong style={{ fontSize: '1.1em' }}>{notification.title}</strong>
-                      <span style={{ fontSize: '0.85em', color: '#666' }}>
-                        {new Date(notification.createdAt).toLocaleString()}
+
+                        // Navigate based on type
+                        if (notification.type.includes('TICKET')) {
+                          setActiveTab('tickets');
+                        } else if (notification.type.includes('BOOKING')) {
+                          setActiveTab('bookings');
+                        }
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <strong style={{ fontSize: '1.1em' }}>{notification.title}</strong>
+                        <span style={{ fontSize: '0.85em', color: '#666' }}>
+                          {new Date(notification.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, color: '#444' }}>{notification.message}</p>
+                      <span style={{ fontSize: '0.8em', color: '#888', fontWeight: 'bold' }}>
+                        {notification.type.replace(/_/g, ' ')}
                       </span>
                     </div>
-                    <p style={{ margin: 0, color: '#444' }}>{notification.message}</p>
-                    <span style={{ fontSize: '0.8em', color: '#888', fontWeight: 'bold' }}>
-                      {notification.type.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                ))
+                  ))
               ) : (
                 <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
                   <p style={{ color: '#6c757d', margin: 0 }}>No notifications found.</p>
@@ -1296,10 +1296,10 @@ const AdminDashboard = () => {
                 ) : (
                   <p style={{ color: '#888', fontStyle: 'italic', margin: '10px 0' }}>No comments for this ticket.</p>
                 )}
-                
+
                 {ticketDetails.status !== 'CLOSED' && ticketDetails.status !== 'RESOLVED' ? (
                   <form onSubmit={handleAddComment} style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <textarea 
+                    <textarea
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Add a new comment..."

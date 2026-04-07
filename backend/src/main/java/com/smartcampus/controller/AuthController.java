@@ -57,23 +57,19 @@ public class AuthController {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginRequest.getEmail(),
-                            loginRequest.getPassword()
-                    )
-            );
+                            loginRequest.getPassword()));
 
             Optional<User> user = userService.findByEmail(loginRequest.getEmail());
             if (user.isPresent()) {
                 String token = jwtTokenProvider.generateToken(
                         user.get().getEmail(),
                         user.get().getId(),
-                        user.get().getRole()
-                );
+                        user.get().getRole());
                 return ResponseEntity.ok(new LoginResponse(
-                    token, 
-                    user.get().getEmail(), 
-                    user.get().getFullName(),
-                    user.get().getRole().toString()
-                ));
+                        token,
+                        user.get().getEmail(),
+                        user.get().getFullName(),
+                        user.get().getRole().toString()));
             }
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
 
@@ -102,8 +98,7 @@ public class AuthController {
                     registerRequest.getEmail(),
                     registerRequest.getPassword(),
                     registerRequest.getFullName(),
-                    UserRole.USER
-            );
+                    UserRole.USER);
 
             UserDTO response = new UserDTO();
             response.setId(createdUser.getId());
@@ -123,7 +118,8 @@ public class AuthController {
     /**
      * Create admin user
      * POST /auth/admin/create
-     * Request body: { "email": "admin@example.com", "password": "password123", "fullName": "Admin User" }
+     * Request body: { "email": "admin@example.com", "password": "password123",
+     * "fullName": "Admin User" }
      */
     @PostMapping("/admin/create")
     public ResponseEntity<?> createAdmin(@RequestBody Map<String, String> request) {
@@ -165,7 +161,7 @@ public class AuthController {
             if (token.startsWith("Bearer ")) {
                 token = token.substring(7);
             }
-            
+
             if (jwtTokenProvider.validateToken(token)) {
                 String email = jwtTokenProvider.getEmailFromToken(token);
                 String userId = jwtTokenProvider.getUserIdFromToken(token);
@@ -197,10 +193,10 @@ public class AuthController {
             if (bearerToken.startsWith("Bearer ")) {
                 bearerToken = bearerToken.substring(7);
             }
-            
+
             String email = jwtTokenProvider.getEmailFromToken(bearerToken);
             Optional<User> user = userService.findByEmail(email);
-            
+
             if (user.isPresent()) {
                 UserDTO userDTO = modelMapper.map(user.get(), UserDTO.class);
                 return ResponseEntity.ok(userDTO);
@@ -222,25 +218,24 @@ public class AuthController {
             if (bearerToken.startsWith("Bearer ")) {
                 bearerToken = bearerToken.substring(7);
             }
-            
+
             if (!jwtTokenProvider.validateToken(bearerToken)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
             }
 
             String userId = jwtTokenProvider.getUserIdFromToken(bearerToken);
             String email = jwtTokenProvider.getEmailFromToken(bearerToken);
-            
+
             Optional<User> user = userService.getUserById(userId);
             if (user.isPresent()) {
                 String newToken = jwtTokenProvider.generateToken(email, userId, user.get().getRole());
                 return ResponseEntity.ok(new LoginResponse(
-                    newToken, 
-                    email, 
-                    user.get().getFullName(),
-                    user.get().getRole().toString()
-                ));
+                        newToken,
+                        email,
+                        user.get().getFullName(),
+                        user.get().getRole().toString()));
             }
-            
+
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token refresh failed");

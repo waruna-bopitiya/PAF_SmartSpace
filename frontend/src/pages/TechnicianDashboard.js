@@ -18,39 +18,23 @@ const TechnicianDashboard = () => {
   const [newComment, setNewComment] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
 
+  const isAssignedToMe = (ticket) => {
+    return ticket.assignedTo === user?.id || ticket.assignedTo === user?.email;
+  };
+
   useEffect(() => {
     const fetchTechnicianData = async () => {
       try {
         setLoading(true);
 
-        const ticketRequests = [];
-        if (user?.id) {
-          ticketRequests.push(ticketAPI.getAssignedTo(user.id));
-        }
-        if (user?.email && user?.email !== user?.id) {
-          ticketRequests.push(ticketAPI.getAssignedTo(user.email));
-        }
-
-        const [ticketResponses, notificationsRes, unreadRes] = await Promise.all([
-          Promise.all(ticketRequests),
+        const [allTicketsRes, notificationsRes, unreadRes] = await Promise.all([
+          ticketAPI.getAll(0, 100),
           notificationAPI.getAll(user?.id || user?.email, 0, 8),
           notificationAPI.getUnreadCount(user?.id || user?.email),
         ]);
 
-        const mergedById = new Map();
-        ticketResponses.forEach((response) => {
-          const data = Array.isArray(response.data) ? response.data : [];
-          data.forEach((ticket) => {
-            const id = ticket._id || ticket.id;
-            if (id) {
-              mergedById.set(id, ticket);
-            }
-          });
-        });
-
-        const assignedTickets = Array.from(mergedById.values());
-
-        setTickets(assignedTickets);
+        const allTickets = allTicketsRes.data?.content || allTicketsRes.data || [];
+        setTickets(allTickets);
         setNotifications(notificationsRes.data?.content || notificationsRes.data || []);
         setUnreadNotifications(unreadRes.data?.count || 0);
       } catch (error) {
@@ -245,8 +229,12 @@ const TechnicianDashboard = () => {
         <>
           <div className="technician-stats-grid">
             <div className="technician-stat-card">
-              <h3>Assigned Tickets</h3>
+              <h3>All Tickets</h3>
               <p className="value">{tickets.length}</p>
+            </div>
+            <div className="technician-stat-card">
+              <h3>Assigned To Me</h3>
+              <p className="value">{tickets.filter(isAssignedToMe).length}</p>
             </div>
             <div className="technician-stat-card">
               <h3>Open Tickets</h3>
@@ -263,7 +251,7 @@ const TechnicianDashboard = () => {
           </div>
 
           <div className="technician-dashboard-section">
-            <h2>My Assigned Tickets</h2>
+            <h2>All Tickets</h2>
             {feedback.message && (
               <div className={`technician-feedback ${feedback.type === 'error' ? 'error' : 'success'}`}>
                 {feedback.message}
@@ -303,8 +291,9 @@ const TechnicianDashboard = () => {
                             {ticket.status === 'OPEN' && (
                               <button
                                 className="tech-action-btn start"
-                                disabled={actionLoadingId === (ticket._id || ticket.id)}
+                                disabled={actionLoadingId === (ticket._id || ticket.id) || !isAssignedToMe(ticket)}
                                 onClick={() => handleUpdateTicketStatus(ticket, 'IN_PROGRESS')}
+                                title={!isAssignedToMe(ticket) ? "You can only edit tickets assigned to you" : ""}
                               >
                                 Start Work
                               </button>
@@ -313,8 +302,9 @@ const TechnicianDashboard = () => {
                             {ticket.status === 'IN_PROGRESS' && (
                               <button
                                 className="tech-action-btn close"
-                                disabled={actionLoadingId === (ticket._id || ticket.id)}
+                                disabled={actionLoadingId === (ticket._id || ticket.id) || !isAssignedToMe(ticket)}
                                 onClick={() => handleUpdateTicketStatus(ticket, 'CLOSED')}
+                                title={!isAssignedToMe(ticket) ? "You can only edit tickets assigned to you" : ""}
                               >
                                 Mark Done
                               </button>
@@ -323,8 +313,9 @@ const TechnicianDashboard = () => {
                             {ticket.status === 'CLOSED' && (
                               <button
                                 className="tech-action-btn reopen"
-                                disabled={actionLoadingId === (ticket._id || ticket.id)}
+                                disabled={actionLoadingId === (ticket._id || ticket.id) || !isAssignedToMe(ticket)}
                                 onClick={() => handleUpdateTicketStatus(ticket, 'OPEN')}
+                                title={!isAssignedToMe(ticket) ? "You can only edit tickets assigned to you" : ""}
                               >
                                 Reopen
                               </button>
