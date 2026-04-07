@@ -1,5 +1,5 @@
 package com.smartcampus.repository;
-
+// Repository interface for Resource entity, extending MongoRepository for CRUD operations
 import com.smartcampus.model.Resource;
 import com.smartcampus.model.ResourceStatus;
 import com.smartcampus.model.ResourceType;
