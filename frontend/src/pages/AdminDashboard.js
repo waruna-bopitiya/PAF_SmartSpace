@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { userAPI, bookingAPI, ticketAPI, resourceAPI } from '../services/api';
+import { RESOURCE_TYPES, formatResourceType } from '../config/resourceTypes';
 import '../styles/AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -695,13 +696,9 @@ const AdminDashboard = () => {
                       onChange={(e) => setResourceForm({...resourceForm, type: e.target.value})}
                     >
                       <option value="">Select Type</option>
-                      <option value="LECTURE_HALL">Lecture Hall</option>
-                      <option value="LAB">Lab</option>
-                      <option value="MEETING_ROOM">Meeting Room</option>
-                      <option value="EQUIPMENT">Equipment</option>
-                      <option value="OUTDOOR_SPACE">Outdoor Space</option>
-                      <option value="PARKING">Parking</option>
-                      <option value="OTHER">Other</option>
+                      {RESOURCE_TYPES.map(type => (
+                        <option key={type} value={type}>{formatResourceType(type)}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

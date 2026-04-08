@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { resourceAPI } from '../services/api';
+import { RESOURCE_TYPES, formatResourceType } from '../config/resourceTypes';
+import { getResourceTypeImage } from '../config/resourceImages';
 import '../styles/Resources.css';
 
 const Resources = () => {
@@ -13,6 +15,8 @@ const Resources = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [imageErrors, setImageErrors] = useState({});
+  const [imageFallbacks, setImageFallbacks] = useState({});
 
   useEffect(() => {
     fetchResources();
@@ -22,9 +26,12 @@ const Resources = () => {
     try {
       setLoading(true);
       const response = await resourceAPI.getAll(page, 10);
-      setResources(response.data.content || response.data);
+      const data = response.data.content || response.data;
+      setResources(data);
       setTotalPages(response.data.totalPages || 1);
-      setFilteredResources(response.data.content || response.data);
+      setFilteredResources(data);
+      setImageErrors({});
+      setImageFallbacks({});
     } catch (error) {
       console.error('Error fetching resources:', error);
     } finally {
@@ -68,26 +75,39 @@ const Resources = () => {
     setFilteredResources(filtered);
   };
 
-  const getTypeIcon = (type) => {
-    const icons = {
-      'LECTURE_HALL': '🎓',
-      'LAB': '🔬',
-      'MEETING_ROOM': '💼',
-      'EQUIPMENT': '⚙️',
-      'OTHER': '📦'
-    };
-    return icons[type] || '📍';
-  };
-
   const getTypeColor = (type) => {
     const colors = {
       'LECTURE_HALL': '#3b82f6',
       'LAB': '#8b5cf6',
       'MEETING_ROOM': '#ec4899',
       'EQUIPMENT': '#f59e0b',
+      'OUTDOOR_SPACE': '#16a34a',
       'OTHER': '#6b7280'
     };
     return colors[type] || '#6b7280';
+  };
+
+  const getResourceId = (resource) => resource.id || resource._id || resource.name;
+
+  const handleImageError = (resource) => {
+    const resourceId = getResourceId(resource);
+
+    if (resource.imageUrl && !imageFallbacks[resourceId]) {
+      setImageFallbacks(prev => ({ ...prev, [resourceId]: true }));
+      return;
+    }
+
+    setImageErrors(prev => ({ ...prev, [resourceId]: true }));
+  };
+
+  const getResourceImage = (resource) => {
+    const resourceId = getResourceId(resource);
+
+    if (resource.imageUrl && !imageFallbacks[resourceId]) {
+      return resource.imageUrl;
+    }
+
+    return getResourceTypeImage(resource.type).url;
   };
 
   const getStatusBadgeClass = (status) => {
@@ -100,7 +120,7 @@ const Resources = () => {
     return statusMap[status] || 'status-inactive';
   };
 
-  const resourceTypes = ['LECTURE_HALL', 'LAB', 'MEETING_ROOM', 'EQUIPMENT', 'OTHER'];
+  const resourceTypes = RESOURCE_TYPES;
   const statusTypes = ['ACTIVE', 'OUT_OF_SERVICE', 'MAINTENANCE', 'RETIRED'];
   const activeCount = resources.filter(r => r.status === 'ACTIVE').length;
 
@@ -171,7 +191,7 @@ const Resources = () => {
               <option value="">All Types</option>
               {resourceTypes.map(type => (
                 <option key={type} value={type}>
-                  {getTypeIcon(type)} {type.replace(/_/g, ' ')}
+                  {formatResourceType(type)}
                 </option>
               ))}
             </select>
@@ -211,14 +231,20 @@ const Resources = () => {
         {filteredResources.length > 0 ? (
           <div className="resources-grid">
             {filteredResources.map(resource => (
-              <div key={resource._id} className="resource-card-modern">
+              <div key={getResourceId(resource)} className="resource-card-modern">
                 {/* Card Header with Image or Placeholder */}
                 <div className="card-image-container">
-                  {resource.imageUrl ? (
-                    <img src={resource.imageUrl} alt={resource.name} className="card-image" />
+                  {!imageErrors[getResourceId(resource)] ? (
+                    <img
+                      src={getResourceImage(resource)}
+                      alt={resource.name}
+                      className="card-image"
+                      loading="lazy"
+                      onError={() => handleImageError(resource)}
+                    />
                   ) : (
                     <div className="card-placeholder" style={{backgroundColor: getTypeColor(resource.type)}}>
-                      <span className="placeholder-icon">{getTypeIcon(resource.type)}</span>
+                      <span className="placeholder-text">Image unavailable</span>
                     </div>
                   )}
                   <div className="card-badges">
@@ -226,7 +252,7 @@ const Resources = () => {
                       className="type-badge"
                       style={{backgroundColor: getTypeColor(resource.type)}}
                     >
-                      {getTypeIcon(resource.type)} {resource.type}
+                      {formatResourceType(resource.type)}
                     </span>
                     <span className={`status-badge ${getStatusBadgeClass(resource.status)}`}>
                       {resource.status}
