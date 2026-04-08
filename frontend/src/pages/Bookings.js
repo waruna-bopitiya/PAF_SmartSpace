@@ -51,7 +51,7 @@ const Bookings = () => {
       [name]: name === 'expectedAttendees' ? parseInt(value) : value,
     }));
   };
-
+// Form submission handler with enhanced validation and error handling
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
