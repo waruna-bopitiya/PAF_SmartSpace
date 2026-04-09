@@ -26,6 +26,7 @@ import com.smartcampus.dto.UserDTO;
 import com.smartcampus.model.User;
 import com.smartcampus.model.UserRole;
 import com.smartcampus.service.UserService;
+import com.smartcampus.service.LoginAttemptService;
 import com.smartcampus.util.JwtTokenProvider;
 
 import jakarta.validation.Valid;
@@ -45,6 +46,9 @@ public class AuthController {
     private UserService userService;
 
     @Autowired
+    private LoginAttemptService loginAttemptService;
+
+    @Autowired
     private ModelMapper modelMapper;
 
     /**
@@ -53,14 +57,22 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
+        String email = loginRequest.getEmail();
+
+        if (loginAttemptService.isBlocked(email)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body("Account is locked due to too many failed attempts. Please try again after 1 minute.");
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            loginRequest.getEmail(),
+                            email,
                             loginRequest.getPassword()));
 
-            Optional<User> user = userService.findByEmail(loginRequest.getEmail());
+            Optional<User> user = userService.findByEmail(email);
             if (user.isPresent()) {
+                loginAttemptService.loginSucceeded(email);
                 String token = jwtTokenProvider.generateToken(
                         user.get().getEmail(),
                         user.get().getId(),
@@ -74,6 +86,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
 
         } catch (AuthenticationException e) {
+            loginAttemptService.loginFailed(email);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
         }
     }

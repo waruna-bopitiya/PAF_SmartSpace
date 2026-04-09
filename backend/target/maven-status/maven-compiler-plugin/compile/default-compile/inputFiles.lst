@@ -9,6 +9,7 @@ D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\mode
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\dto\RegisterRequest.java
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\service\ResourceService.java
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\model\Booking.java
+D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\service\LoginAttemptService.java
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\SmartCampusHubApplication.java
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\security\SecurityConfig.java
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\security\CustomUserDetailsService.java
