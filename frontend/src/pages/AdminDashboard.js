@@ -9,7 +9,7 @@ import '../styles/AdminDashboard.css';
 const AdminDashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
 
   const formatTime = (dateString) => {
@@ -75,9 +75,10 @@ const AdminDashboard = () => {
     // ── Users (ADMIN only) ──
     try {
       const res = await userAPI.getAll();
-      const data = Array.isArray(res.data) ? res.data : [];
-      setUsers(data);
-      setStats(s => ({ ...s, totalUsers: data.length }));
+      const data = res.data?.content || res.data || [];
+      const arr = Array.isArray(data) ? data : [];
+      setUsers(arr);
+      setStats(s => ({ ...s, totalUsers: arr.length }));
     } catch (e) {
       console.error('Users fetch error:', e.response?.status, e.response?.data || e.message);
       errors.push(`Users: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
