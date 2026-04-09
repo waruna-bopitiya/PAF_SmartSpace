@@ -289,29 +289,6 @@ const Resources = () => {
                     )}
                   </div>
 
-                  {/* Contact Information */}
-                  {(resource.contactPerson || resource.phoneNumber || resource.email) && (
-                    <div className="contact-info">
-                      {resource.contactPerson && (
-                        <p className="contact-item">
-                          <span className="contact-label">👤</span>
-                          <span>{resource.contactPerson}</span>
-                        </p>
-                      )}
-                      {resource.phoneNumber && (
-                        <p className="contact-item">
-                          <span className="contact-label">📞</span>
-                          <a href={`tel:${resource.phoneNumber}`}>{resource.phoneNumber}</a>
-                        </p>
-                      )}
-                      {resource.email && (
-                        <p className="contact-item">
-                          <span className="contact-label">✉️</span>
-                          <a href={`mailto:${resource.email}`}>{resource.email}</a>
-                        </p>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Card Footer */}
