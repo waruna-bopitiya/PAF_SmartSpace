@@ -46,19 +46,43 @@ const AdminDashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [usersRes, bookingsRes, ticketsRes, resourcesRes] = await Promise.all([
+        const [usersRes, bookingsRes, ticketsRes, resourcesRes] = await Promise.allSettled([
           userAPI.getAll(),
           bookingAPI.getAll(),
           ticketAPI.getAll(),
           resourceAPI.getAll(),
         ]);
 
-        // Handle different response formats
-        // Users returns direct array, others return paginated objects
-        const usersData = Array.isArray(usersRes.data) ? usersRes.data : [];
-        const bookingsData = bookingsRes.data?.content || bookingsRes.data || [];
-        const ticketsData = ticketsRes.data?.content || ticketsRes.data || [];
-        const resourcesData = resourcesRes.data?.content || resourcesRes.data || [];
+        const toArray = (result, isUsers = false) => {
+          if (result.status !== 'fulfilled') {
+            return [];
+          }
+
+          const payload = result.value?.data;
+
+          if (Array.isArray(payload)) {
+            return payload;
+          }
+
+          if (Array.isArray(payload?.content)) {
+            return payload.content;
+          }
+
+          if (isUsers && Array.isArray(payload?.users)) {
+            return payload.users;
+          }
+
+          if (Array.isArray(payload?.data)) {
+            return payload.data;
+          }
+
+          return [];
+        };
+
+        const usersData = toArray(usersRes, true);
+        const bookingsData = toArray(bookingsRes);
+        const ticketsData = toArray(ticketsRes);
+        const resourcesData = toArray(resourcesRes);
 
         setUsers(usersData);
         setBookings(bookingsData);
