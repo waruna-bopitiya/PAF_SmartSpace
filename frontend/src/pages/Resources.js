@@ -23,6 +23,7 @@ const Resources = () => {
 
   useEffect(() => {
     fetchResources();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   const fetchResources = async () => {
@@ -87,6 +88,16 @@ const Resources = () => {
       'OTHER': '#6b7280'
     };
     return colors[type] || '#6b7280';
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return dateString;
+    }
   };
 
   const getResourceId = (resource) => resource.id || resource._id || resource.name;
@@ -326,6 +337,22 @@ const Resources = () => {
                         <div>
                           <span className="info-label">Location</span>
                           <span className="info-value">{resource.location}</span>
+                        </div>
+                      </div>
+                    )}
+                    {(resource.weekdayOpenTime || resource.weekendOpenTime) && (
+                      <div className="info-item availability-info" style={{ gridColumn: '1 / -1' }}>
+                        <span className="info-icon">🕒</span>
+                        <div>
+                          <span className="info-label">Availability Windows</span>
+                          <div className="info-value" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                            {resource.weekdayOpenTime && resource.weekdayCloseTime && (
+                              <span><strong style={{ fontWeight: 500 }}>Weekdays:</strong> {formatTime(resource.weekdayOpenTime)} - {formatTime(resource.weekdayCloseTime)}</span>
+                            )}
+                            {resource.weekendOpenTime && resource.weekendCloseTime && (
+                              <span><strong style={{ fontWeight: 500 }}>Weekends:</strong> {formatTime(resource.weekendOpenTime)} - {formatTime(resource.weekendCloseTime)}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}

@@ -12,6 +12,16 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(true);
 
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return dateString;
+    }
+  };
+
   // Users Management
   const [users, setUsers] = useState([]);
   const [userForm, setUserForm] = useState({ email: '', password: '', fullName: '', role: 'USER' });
@@ -26,12 +36,13 @@ const AdminDashboard = () => {
 
   // Resources Management
   const [resources, setResources] = useState([]);
-  const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
+  const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
   const [isEditingResource, setIsEditingResource] = useState(false);
   const [qrResource, setQrResource] = useState(null); // resource to show QR for
 
   // Modal
   const [showBookingModal, setShowBookingModal] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [approvalReason, setApprovalReason] = useState('');
 
@@ -195,6 +206,7 @@ const AdminDashboard = () => {
   };
 
   // Handle Reject Booking
+  // eslint-disable-next-line no-unused-vars
   const handleRejectBooking = async (booking) => {
     if (!window.confirm('Are you sure you want to reject this booking?')) return;
 
@@ -287,7 +299,11 @@ const AdminDashboard = () => {
         location: resourceForm.location,
         capacity: parseInt(resourceForm.capacity, 10),
         description: resourceForm.description || '',
-        status: resourceForm.status
+        status: resourceForm.status,
+        weekdayOpenTime: resourceForm.weekdayOpenTime || null,
+        weekdayCloseTime: resourceForm.weekdayCloseTime || null,
+        weekendOpenTime: resourceForm.weekendOpenTime || null,
+        weekendCloseTime: resourceForm.weekendCloseTime || null
       };
 
       if (isEditingResource) {
@@ -321,7 +337,7 @@ const AdminDashboard = () => {
 
         alert('✅ Resource added successfully');
       }
-      setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
+      setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
       setIsEditingResource(false);
     } catch (error) {
       console.error('Error saving resource:', error);
@@ -814,6 +830,42 @@ const AdminDashboard = () => {
                     </select>
                   </div>
                 </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Weekday Open Time</label>
+                    <input
+                      type="datetime-local"
+                      value={resourceForm.weekdayOpenTime || ''}
+                      onChange={(e) => setResourceForm({ ...resourceForm, weekdayOpenTime: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Weekday Close Time</label>
+                    <input
+                      type="datetime-local"
+                      value={resourceForm.weekdayCloseTime || ''}
+                      onChange={(e) => setResourceForm({ ...resourceForm, weekdayCloseTime: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Weekend Open Time</label>
+                    <input
+                      type="datetime-local"
+                      value={resourceForm.weekendOpenTime || ''}
+                      onChange={(e) => setResourceForm({ ...resourceForm, weekendOpenTime: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Weekend Close Time</label>
+                    <input
+                      type="datetime-local"
+                      value={resourceForm.weekendCloseTime || ''}
+                      onChange={(e) => setResourceForm({ ...resourceForm, weekendCloseTime: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div className="form-actions">
                   <button type="submit" className="btn btn-success">
                     {isEditingResource ? 'Update Resource' : 'Add Resource'}
@@ -823,7 +875,7 @@ const AdminDashboard = () => {
                       type="button"
                       className="btn btn-secondary"
                       onClick={() => {
-                        setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
+                        setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
                         setIsEditingResource(false);
                       }}
                     >
@@ -844,7 +896,7 @@ const AdminDashboard = () => {
                     <th>Type</th>
                     <th>Location</th>
                     <th>Capacity</th>
-                    <th>Description</th>
+                    <th>Availability</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -858,7 +910,20 @@ const AdminDashboard = () => {
                         <td>{resource.type}</td>
                         <td>{resource.location || 'N/A'}</td>
                         <td>{resource.capacity || 'N/A'}</td>
-                        <td>{resource.description || 'N/A'}</td>
+                        <td>
+                          {resource.weekdayOpenTime || resource.weekendOpenTime ? (
+                            <div style={{ fontSize: '0.85em', lineHeight: '1.4' }}>
+                              {resource.weekdayOpenTime && resource.weekdayCloseTime && (
+                                <div><strong style={{ fontWeight: 500 }}>Wd:</strong> {formatTime(resource.weekdayOpenTime)} - {formatTime(resource.weekdayCloseTime)}</div>
+                              )}
+                              {resource.weekendOpenTime && resource.weekendCloseTime && (
+                                <div><strong style={{ fontWeight: 500 }}>We:</strong> {formatTime(resource.weekendOpenTime)} - {formatTime(resource.weekendCloseTime)}</div>
+                              )}
+                            </div>
+                          ) : (
+                            'N/A'
+                          )}
+                        </td>
                         <td><span className={`status ${resource.status?.toLowerCase()}`}>{resource.status}</span></td>
                         <td>
                           <button className="btn-small btn-primary" onClick={() => handleEditResource(resource)}>Edit</button>
