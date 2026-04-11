@@ -12,6 +12,9 @@ const Resources = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterCapacity, setFilterCapacity] = useState('');
+  const [filterLocation, setFilterLocation] = useState('');
+  const [filterAvailability, setFilterAvailability] = useState('');
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -39,41 +42,40 @@ const Resources = () => {
     }
   };
 
-  const handleSearch = (value) => {
-    setSearchTerm(value);
-    applyFilters(value, filterType, filterStatus);
-  };
-
-  const handleFilterType = (value) => {
-    setFilterType(value);
-    applyFilters(searchTerm, value, filterStatus);
-  };
-
-  const handleFilterStatus = (value) => {
-    setFilterStatus(value);
-    applyFilters(searchTerm, filterType, value);
-  };
-
-  const applyFilters = (search, type, status) => {
+  useEffect(() => {
     let filtered = resources;
 
-    if (search) {
+    if (searchTerm) {
       filtered = filtered.filter(r =>
-        r.name.toLowerCase().includes(search.toLowerCase()) ||
-        r.description?.toLowerCase().includes(search.toLowerCase())
+        r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    if (type) {
-      filtered = filtered.filter(r => r.type === type);
+    if (filterType) {
+      filtered = filtered.filter(r => r.type === filterType);
     }
- 
-    if (status) {
-      filtered = filtered.filter(r => r.status === status);
+
+    if (filterStatus) {
+      filtered = filtered.filter(r => r.status === filterStatus);
+    }
+
+    if (filterCapacity) {
+      filtered = filtered.filter(r => r.capacity >= parseInt(filterCapacity, 10));
+    }
+
+    if (filterLocation) {
+      filtered = filtered.filter(r => r.location?.toLowerCase().includes(filterLocation.toLowerCase()));
+    }
+
+    if (filterAvailability === 'WEEKDAY') {
+      filtered = filtered.filter(r => r.weekdayOpenTime);
+    } else if (filterAvailability === 'WEEKEND') {
+      filtered = filtered.filter(r => r.weekendOpenTime);
     }
 
     setFilteredResources(filtered);
-  };
+  }, [resources, searchTerm, filterType, filterStatus, filterCapacity, filterLocation, filterAvailability]);
 
   const getTypeColor = (type) => {
     const colors = {
@@ -159,20 +161,20 @@ const Resources = () => {
       <div className="filters-wrapper">
         <div className="search-container">
           <svg className="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M12.5 12.5L17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M12.5 12.5L17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
           <input
             type="text"
             placeholder="Search resources by name or description..."
             value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input-main"
           />
           {searchTerm && (
-            <button 
+            <button
               className="clear-search"
-              onClick={() => handleSearch('')}
+              onClick={() => setSearchTerm('')}
               title="Clear search"
             >
               ✕
@@ -180,12 +182,12 @@ const Resources = () => {
           )}
         </div>
 
-        <div className="filters-row">
+        <div className="filters-row" style={{ flexWrap: 'wrap', gap: '15px' }}>
           <div className="filter-item">
             <label className="filter-label">Type</label>
             <select
               value={filterType}
-              onChange={(e) => handleFilterType(e.target.value)}
+              onChange={(e) => setFilterType(e.target.value)}
               className="filter-select-modern"
             >
               <option value="">All Types</option>
@@ -201,7 +203,7 @@ const Resources = () => {
             <label className="filter-label">Status</label>
             <select
               value={filterStatus}
-              onChange={(e) => handleFilterStatus(e.target.value)}
+              onChange={(e) => setFilterStatus(e.target.value)}
               className="filter-select-modern"
             >
               <option value="">All Status</option>
@@ -211,14 +213,54 @@ const Resources = () => {
             </select>
           </div>
 
-          {(searchTerm || filterType || filterStatus) && (
+          <div className="filter-item">
+            <label className="filter-label">Min Capacity</label>
+            <input
+              type="number"
+              value={filterCapacity}
+              onChange={(e) => setFilterCapacity(e.target.value)}
+              className="filter-select-modern"
+              placeholder="e.g. 10"
+              style={{ width: '100px' }}
+            />
+          </div>
+
+          <div className="filter-item">
+            <label className="filter-label">Location</label>
+            <input
+              type="text"
+              value={filterLocation}
+              onChange={(e) => setFilterLocation(e.target.value)}
+              className="filter-select-modern"
+              placeholder="e.g. Building A"
+            />
+          </div>
+
+          <div className="filter-item">
+            <label className="filter-label">Availability</label>
+            <select
+              value={filterAvailability}
+              onChange={(e) => setFilterAvailability(e.target.value)}
+              className="filter-select-modern"
+            >
+              <option value="">Any Time</option>
+              <option value="WEEKDAY">Weekdays</option>
+              <option value="WEEKEND">Weekends</option>
+            </select>
+          </div>
+
+          {(searchTerm || filterType || filterStatus || filterCapacity || filterLocation || filterAvailability) && (
             <button
               className="reset-filters-btn"
               onClick={() => {
-                handleSearch('');
-                handleFilterType('');
-                handleFilterStatus('');
+                setSearchTerm('');
+                setFilterType('');
+                setFilterStatus('');
+                setFilterCapacity('');
+                setFilterLocation('');
+                setFilterAvailability('');
               }}
+              style={{ marginTop: 'auto', marginBottom: '4px' }}
             >
               Reset Filters
             </button>
@@ -243,14 +285,14 @@ const Resources = () => {
                       onError={() => handleImageError(resource)}
                     />
                   ) : (
-                    <div className="card-placeholder" style={{backgroundColor: getTypeColor(resource.type)}}>
+                    <div className="card-placeholder" style={{ backgroundColor: getTypeColor(resource.type) }}>
                       <span className="placeholder-text">Image unavailable</span>
                     </div>
                   )}
                   <div className="card-badges">
-                    <span 
+                    <span
                       className="type-badge"
-                      style={{backgroundColor: getTypeColor(resource.type)}}
+                      style={{ backgroundColor: getTypeColor(resource.type) }}
                     >
                       {formatResourceType(resource.type)}
                     </span>
@@ -293,7 +335,7 @@ const Resources = () => {
 
                 {/* Card Footer */}
                 <div className="card-footer">
-                  <button 
+                  <button
                     className="btn-book"
                     onClick={() => navigate('/bookings', { state: { resourceId: resource._id, resourceName: resource.name } })}
                   >
@@ -308,12 +350,15 @@ const Resources = () => {
             <div className="empty-icon">🔍</div>
             <h3>No Resources Found</h3>
             <p>Try adjusting your search or filter criteria</p>
-            <button 
+            <button
               className="btn-reset"
               onClick={() => {
-                handleSearch('');
-                handleFilterType('');
-                handleFilterStatus('');
+                setSearchTerm('');
+                setFilterType('');
+                setFilterStatus('');
+                setFilterCapacity('');
+                setFilterLocation('');
+                setFilterAvailability('');
               }}
             >
               Clear All Filters
@@ -332,13 +377,13 @@ const Resources = () => {
           >
             ← Previous
           </button>
-          
+
           <div className="pagination-info">
             <span className="page-number">Page {page + 1}</span>
             <span className="page-divider">/</span>
             <span className="page-total">{totalPages}</span>
           </div>
-          
+
           <button
             disabled={page >= totalPages - 1}
             onClick={() => setPage(page + 1)}

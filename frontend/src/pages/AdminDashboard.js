@@ -11,25 +11,25 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(true);
-  
+
   // Users Management
   const [users, setUsers] = useState([]);
   const [userForm, setUserForm] = useState({ email: '', password: '', fullName: '', role: 'USER' });
-  
+
   // Bookings Management
   const [bookings, setBookings] = useState([]);
   const [bookingFilter, setBookingFilter] = useState('PENDING');
-  
+
   // Tickets Management
   const [tickets, setTickets] = useState([]);
   const [ticketFilter, setTicketFilter] = useState('OPEN');
-  
+
   // Resources Management
   const [resources, setResources] = useState([]);
   const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
   const [isEditingResource, setIsEditingResource] = useState(false);
   const [qrResource, setQrResource] = useState(null); // resource to show QR for
-  
+
   // Modal
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -123,15 +123,15 @@ const AdminDashboard = () => {
   const hasBookingConflict = (newBooking, existingBookings) => {
     return existingBookings.some(booking => {
       if (booking.id === newBooking.id || booking.status === 'REJECTED') return false;
-      
+
       const newStart = new Date(newBooking.startTime || newBooking.startDateTime);
       const newEnd = new Date(newBooking.endTime || newBooking.endDateTime);
       const existStart = new Date(booking.startTime || booking.startDateTime);
       const existEnd = new Date(booking.endTime || booking.endDateTime);
-      
+
       // Check if same resource and overlapping time
       return booking.resourceId === newBooking.resourceId &&
-             !(newEnd <= existStart || newStart >= existEnd);
+        !(newEnd <= existStart || newStart >= existEnd);
     });
   };
 
@@ -182,7 +182,7 @@ const AdminDashboard = () => {
         approvalReason,
         user?.id || user?.email || 'admin'
       );
-      setBookings(bookings.map(b => 
+      setBookings(bookings.map(b =>
         b.id === booking.id ? { ...b, status: 'APPROVED', approvalReason: approvalReason } : b
       ));
       setShowBookingModal(false);
@@ -205,7 +205,7 @@ const AdminDashboard = () => {
 
     try {
       await bookingAPI.reject(booking.id, approvalReason.trim());
-      setBookings(bookings.map(b => 
+      setBookings(bookings.map(b =>
         b.id === booking.id ? { ...b, status: 'REJECTED', rejectionReason: approvalReason } : b
       ));
       setApprovalReason('');
@@ -234,7 +234,7 @@ const AdminDashboard = () => {
         await bookingAPI.update(bookingId, { status: newStatus });
       }
 
-      setBookings(bookings.map(b => 
+      setBookings(bookings.map(b =>
         b.id === bookingId ? { ...b, status: newStatus } : b
       ));
       console.log(`Booking ${bookingId} status updated to ${newStatus}`);
@@ -247,7 +247,7 @@ const AdminDashboard = () => {
   // Handle Approve Ticket
   const handleApproveTicket = async (ticket) => {
     try {
-      setTickets(tickets.map(t => 
+      setTickets(tickets.map(t =>
         t.id === ticket.id ? { ...t, status: 'IN_PROGRESS' } : t
       ));
       alert('✅ Ticket approved and assigned');
@@ -262,7 +262,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to reject this ticket?')) return;
 
     try {
-      setTickets(tickets.map(t => 
+      setTickets(tickets.map(t =>
         t.id === ticket.id ? { ...t, status: 'CLOSED' } : t
       ));
       alert('Ticket rejected and closed');
@@ -293,7 +293,7 @@ const AdminDashboard = () => {
       if (isEditingResource) {
         // UPDATE existing resource
         const response = await resourceAPI.update(resourceForm._id || resourceForm.id, formData);
-        setResources(resources.map(r => 
+        setResources(resources.map(r =>
           (r._id || r.id) === (resourceForm._id || resourceForm.id) ? response.data : r
         ));
         alert('✅ Resource updated successfully');
@@ -306,7 +306,7 @@ const AdminDashboard = () => {
         const updatedResources = [...resources, response.data];
         console.log('Updated resources after add:', updatedResources);
         setResources(updatedResources);
-        
+
         // Also fetch fresh data from server to ensure sync
         setTimeout(async () => {
           try {
@@ -318,7 +318,7 @@ const AdminDashboard = () => {
             console.error('Error refreshing resources:', err);
           }
         }, 500);
-        
+
         alert('✅ Resource added successfully');
       }
       setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
@@ -339,7 +339,7 @@ const AdminDashboard = () => {
   // Handle Delete Resource
   const handleDeleteResource = async (resourceId) => {
     if (!window.confirm('Are you sure you want to delete this resource?')) return;
-    
+
     try {
       // Use _id for MongoDB, fallback to id if needed
       const id = resourceId._id || resourceId;
@@ -355,7 +355,7 @@ const AdminDashboard = () => {
   // Handle Delete Booking
   const handleDeleteBooking = async (bookingId) => {
     if (!window.confirm('Are you sure you want to delete this booking?')) return;
-    
+
     try {
       const id = typeof bookingId === 'object' ? (bookingId?.id || bookingId?._id) : bookingId;
       if (!id) {
@@ -374,7 +374,7 @@ const AdminDashboard = () => {
   // Handle Delete Ticket
   const handleDeleteTicket = async (ticketId) => {
     if (!window.confirm('Are you sure you want to delete this ticket?')) return;
-    
+
     try {
       const id = ticketId._id || ticketId;
       await ticketAPI.delete(id);
@@ -401,33 +401,33 @@ const AdminDashboard = () => {
       {/* Top Navigation Bar */}
       <div className="admin-top-nav">
         <div className="admin-panel-title">Admin Panel</div>
-        
+
         <div className="admin-nav">
-          <button 
+          <button
             className={`admin-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
           >
             Dashboard
           </button>
-          <button 
+          <button
             className={`admin-nav-btn ${activeTab === 'users' ? 'active' : ''}`}
             onClick={() => setActiveTab('users')}
           >
             Users
           </button>
-          <button 
+          <button
             className={`admin-nav-btn ${activeTab === 'bookings' ? 'active' : ''}`}
             onClick={() => setActiveTab('bookings')}
           >
             Bookings
           </button>
-          <button 
+          <button
             className={`admin-nav-btn ${activeTab === 'tickets' ? 'active' : ''}`}
             onClick={() => setActiveTab('tickets')}
           >
             Tickets
           </button>
-          <button 
+          <button
             className={`admin-nav-btn ${activeTab === 'resources' ? 'active' : ''}`}
             onClick={() => setActiveTab('resources')}
           >
@@ -490,7 +490,7 @@ const AdminDashboard = () => {
         {activeTab === 'users' && (
           <div className="admin-section">
             <h2>User Management</h2>
-            
+
             <div className="admin-form">
               <h3>Create New User</h3>
               <form onSubmit={handleCreateUser}>
@@ -500,7 +500,7 @@ const AdminDashboard = () => {
                     <input
                       type="email"
                       value={userForm.email}
-                      onChange={(e) => setUserForm({...userForm, email: e.target.value})}
+                      onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                       placeholder="user@example.com"
                     />
                   </div>
@@ -509,7 +509,7 @@ const AdminDashboard = () => {
                     <input
                       type="text"
                       value={userForm.fullName}
-                      onChange={(e) => setUserForm({...userForm, fullName: e.target.value})}
+                      onChange={(e) => setUserForm({ ...userForm, fullName: e.target.value })}
                       placeholder="Full Name"
                     />
                   </div>
@@ -520,7 +520,7 @@ const AdminDashboard = () => {
                     <input
                       type="password"
                       value={userForm.password}
-                      onChange={(e) => setUserForm({...userForm, password: e.target.value})}
+                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                       placeholder="Password"
                     />
                   </div>
@@ -528,7 +528,7 @@ const AdminDashboard = () => {
                     <label>Role</label>
                     <select
                       value={userForm.role}
-                      onChange={(e) => setUserForm({...userForm, role: e.target.value})}
+                      onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
                     >
                       <option value="USER">User</option>
                       <option value="ADMIN">Admin</option>
@@ -564,7 +564,7 @@ const AdminDashboard = () => {
                         <td>{user.phoneNumber || 'N/A'}</td>
                         <td><span className={`status ${user.active ? 'active' : 'inactive'}`}>{user.active ? 'Active' : 'Inactive'}</span></td>
                         <td>
-                          <button 
+                          <button
                             className="btn btn-delete btn-sm"
                             onClick={() => handleDeleteUser(user.id)}
                           >
@@ -586,7 +586,7 @@ const AdminDashboard = () => {
         {activeTab === 'bookings' && (
           <div className="admin-section">
             <h2>Booking Management & Approval</h2>
-            
+
             <div className="filter-group">
               <label>Filter by Status:</label>
               <select value={bookingFilter} onChange={(e) => setBookingFilter(e.target.value)}>
@@ -616,51 +616,51 @@ const AdminDashboard = () => {
                     bookings
                       .filter(b => bookingFilter === 'ALL' || b.status === bookingFilter)
                       .map(booking => (
-                      <tr key={booking.id}>
-                        <td>{booking.id?.substring(0, 8)}...</td>
-                        <td>{booking.resourceId}</td>
-                        <td>{booking.userId}</td>
-                        <td>{new Date(booking.startTime || booking.startDateTime).toLocaleString()}</td>
-                        <td>{new Date(booking.endTime || booking.endDateTime).toLocaleString()}</td>
-                        <td>
-                          <select 
-                            value={booking.status}
-                            onChange={(e) => handleUpdateBookingStatus(booking.id, e.target.value)}
-                            className="status-dropdown"
-                            style={{
-                              padding: '5px 8px',
-                              borderRadius: '4px',
-                              border: '1px solid #ddd',
-                              backgroundColor: 
-                                booking.status === 'APPROVED' ? '#d4edda' :
-                                booking.status === 'PENDING' ? '#fff3cd' :
-                                booking.status === 'REJECTED' ? '#f8d7da' :
-                                booking.status === 'CANCELLED' ? '#e2e3e5' :
-                                '#ffffff'
-                            }}
-                          >
-                            <option value="PENDING">Pending</option>
-                            <option value="APPROVED">Approved</option>
-                            <option value="REJECTED">Rejected</option>
-                            <option value="CANCELLED">Cancelled</option>
-                          </select>
-                        </td>
-                        <td>
-                          {booking.status === 'PENDING' ? (
-                            <>
-                              <button 
-                                className="btn-small btn-success" 
-                                onClick={() => handleUpdateBookingStatus(booking.id, 'APPROVED')}
-                              >
-                                Quick Approve
-                              </button>
-                            </>
-                          ) : (
-                            <button className="btn-small btn-danger" onClick={() => handleDeleteBooking(booking.id)}>Delete</button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                        <tr key={booking.id}>
+                          <td>{booking.id?.substring(0, 8)}...</td>
+                          <td>{booking.resourceId}</td>
+                          <td>{booking.userId}</td>
+                          <td>{new Date(booking.startTime || booking.startDateTime).toLocaleString()}</td>
+                          <td>{new Date(booking.endTime || booking.endDateTime).toLocaleString()}</td>
+                          <td>
+                            <select
+                              value={booking.status}
+                              onChange={(e) => handleUpdateBookingStatus(booking.id, e.target.value)}
+                              className="status-dropdown"
+                              style={{
+                                padding: '5px 8px',
+                                borderRadius: '4px',
+                                border: '1px solid #ddd',
+                                backgroundColor:
+                                  booking.status === 'APPROVED' ? '#d4edda' :
+                                    booking.status === 'PENDING' ? '#fff3cd' :
+                                      booking.status === 'REJECTED' ? '#f8d7da' :
+                                        booking.status === 'CANCELLED' ? '#e2e3e5' :
+                                          '#ffffff'
+                              }}
+                            >
+                              <option value="PENDING">Pending</option>
+                              <option value="APPROVED">Approved</option>
+                              <option value="REJECTED">Rejected</option>
+                              <option value="CANCELLED">Cancelled</option>
+                            </select>
+                          </td>
+                          <td>
+                            {booking.status === 'PENDING' ? (
+                              <>
+                                <button
+                                  className="btn-small btn-success"
+                                  onClick={() => handleUpdateBookingStatus(booking.id, 'APPROVED')}
+                                >
+                                  Quick Approve
+                                </button>
+                              </>
+                            ) : (
+                              <button className="btn-small btn-danger" onClick={() => handleDeleteBooking(booking.id)}>Delete</button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
                   ) : (
                     <tr><td colSpan="7" className="text-center">No bookings found</td></tr>
                   )}
@@ -674,7 +674,7 @@ const AdminDashboard = () => {
         {activeTab === 'tickets' && (
           <div className="admin-section">
             <h2>Ticket Management & Approval</h2>
-            
+
             <div className="filter-group">
               <label>Filter by Status:</label>
               <select value={ticketFilter} onChange={(e) => setTicketFilter(e.target.value)}>
@@ -702,35 +702,35 @@ const AdminDashboard = () => {
                     tickets
                       .filter(t => ticketFilter === 'ALL' || t.status === ticketFilter)
                       .map(ticket => (
-                      <tr key={ticket.id}>
-                        <td>{ticket.id?.substring(0, 8)}...</td>
-                        <td>{ticket.title}</td>
-                        <td>{ticket.category}</td>
-                        <td><span className={`priority ${ticket.priority?.toLowerCase()}`}>{ticket.priority}</span></td>
-                        <td><span className={`status ${ticket.status?.toLowerCase()}`}>{ticket.status}</span></td>
-                        <td>{ticket.createdBy}</td>
-                        <td>
-                          {ticket.status === 'OPEN' ? (
-                            <>
-                              <button 
-                                className="btn-small btn-success" 
-                                onClick={() => handleApproveTicket(ticket)}
-                              >
-                                Approve
-                              </button>
-                              <button 
-                                className="btn-small btn-danger" 
-                                onClick={() => handleRejectTicket(ticket)}
-                              >
-                                Reject
-                              </button>
-                            </>
-                          ) : (
-                            <button className="btn-small btn-danger" onClick={() => handleDeleteTicket(ticket.id)}>Delete</button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                        <tr key={ticket.id}>
+                          <td>{ticket.id?.substring(0, 8)}...</td>
+                          <td>{ticket.title}</td>
+                          <td>{ticket.category}</td>
+                          <td><span className={`priority ${ticket.priority?.toLowerCase()}`}>{ticket.priority}</span></td>
+                          <td><span className={`status ${ticket.status?.toLowerCase()}`}>{ticket.status}</span></td>
+                          <td>{ticket.createdBy}</td>
+                          <td>
+                            {ticket.status === 'OPEN' ? (
+                              <>
+                                <button
+                                  className="btn-small btn-success"
+                                  onClick={() => handleApproveTicket(ticket)}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  className="btn-small btn-danger"
+                                  onClick={() => handleRejectTicket(ticket)}
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            ) : (
+                              <button className="btn-small btn-danger" onClick={() => handleDeleteTicket(ticket.id)}>Delete</button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
                   ) : (
                     <tr><td colSpan="7" className="text-center">No tickets found</td></tr>
                   )}
@@ -744,7 +744,7 @@ const AdminDashboard = () => {
         {activeTab === 'resources' && (
           <div className="admin-section">
             <h2>Resource Management</h2>
-            
+
             <div className="admin-form">
               <h3>{isEditingResource ? 'Edit Resource' : 'Add New Resource'}</h3>
               <form onSubmit={handleSaveResource}>
@@ -754,7 +754,7 @@ const AdminDashboard = () => {
                     <input
                       type="text"
                       value={resourceForm.name}
-                      onChange={(e) => setResourceForm({...resourceForm, name: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, name: e.target.value })}
                       placeholder="e.g., Meeting Room A"
                     />
                   </div>
@@ -762,7 +762,7 @@ const AdminDashboard = () => {
                     <label>Type</label>
                     <select
                       value={resourceForm.type}
-                      onChange={(e) => setResourceForm({...resourceForm, type: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, type: e.target.value })}
                     >
                       <option value="">Select Type</option>
                       {RESOURCE_TYPES.map(type => (
@@ -777,7 +777,7 @@ const AdminDashboard = () => {
                     <input
                       type="text"
                       value={resourceForm.location}
-                      onChange={(e) => setResourceForm({...resourceForm, location: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, location: e.target.value })}
                       placeholder="e.g., Building A, Floor 2"
                     />
                   </div>
@@ -785,7 +785,7 @@ const AdminDashboard = () => {
                     <label>Description</label>
                     <textarea
                       value={resourceForm.description}
-                      onChange={(e) => setResourceForm({...resourceForm, description: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, description: e.target.value })}
                       placeholder="Optional description"
                       rows="2"
                     />
@@ -797,7 +797,7 @@ const AdminDashboard = () => {
                     <input
                       type="number"
                       value={resourceForm.capacity}
-                      onChange={(e) => setResourceForm({...resourceForm, capacity: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, capacity: e.target.value })}
                       placeholder="e.g., 20"
                     />
                   </div>
@@ -805,7 +805,7 @@ const AdminDashboard = () => {
                     <label>Status</label>
                     <select
                       value={resourceForm.status}
-                      onChange={(e) => setResourceForm({...resourceForm, status: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, status: e.target.value })}
                     >
                       <option value="ACTIVE">Active</option>
                       <option value="OUT_OF_SERVICE">Out of Service</option>
@@ -819,8 +819,8 @@ const AdminDashboard = () => {
                     {isEditingResource ? 'Update Resource' : 'Add Resource'}
                   </button>
                   {isEditingResource && (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       className="btn btn-secondary"
                       onClick={() => {
                         setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
@@ -835,7 +835,7 @@ const AdminDashboard = () => {
             </div>
 
             <div className="admin-table">
-              <p style={{color: '#666', fontSize: '12px', marginBottom: '10px'}}>Total Resources: <strong>{resources.length}</strong></p>
+              <p style={{ color: '#666', fontSize: '12px', marginBottom: '10px' }}>Total Resources: <strong>{resources.length}</strong></p>
               <table>
                 <thead>
                   <tr>
