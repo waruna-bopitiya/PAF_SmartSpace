@@ -121,7 +121,7 @@ const Bookings = () => {
       const response = await bookingAPI.create(payload);
       
       console.log('Booking response:', response);
-
+// Check for success status codes (201 Created or 200 OK)
       if (response && (response.status === 201 || response.status === 200)) {
         setSuccess('Booking request submitted successfully!');
         setFormData({
