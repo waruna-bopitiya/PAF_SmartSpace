@@ -169,7 +169,7 @@ const Bookings = () => {
       }
     }
   };
-
+// Booking cancellation handler with confirmation and enhanced error handling
   const handleCancel = async (bookingId) => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
       try {
@@ -188,7 +188,7 @@ const Bookings = () => {
       }
     }
   };
-
+// Helper function to get badge color based on booking status
   const getStatusColor = (status) => {
     return {
       PENDING: 'warning',
