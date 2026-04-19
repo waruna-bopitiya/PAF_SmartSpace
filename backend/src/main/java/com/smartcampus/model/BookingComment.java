@@ -3,7 +3,7 @@ package com.smartcampus.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
-
+// Model class for booking comments, representing user feedback on bookings
 @Document(collection = "booking_comments")
 public class BookingComment {
     @Id
@@ -25,7 +25,7 @@ public class BookingComment {
 
     public BookingComment() {
     }
-
+// Constructor with all fields for easy instantiation
     public BookingComment(String id, String bookingId, String userId, String userName, String userEmail, String content, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.bookingId = bookingId;
