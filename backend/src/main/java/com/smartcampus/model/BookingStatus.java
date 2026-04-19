@@ -1,5 +1,5 @@
 package com.smartcampus.model;
-
+// Enum representing the status of a booking, used for tracking and managing booking states
 public enum BookingStatus {
     PENDING,
     APPROVED,
