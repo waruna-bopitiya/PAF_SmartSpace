@@ -1,5 +1,5 @@
 package com.smartcampus.repository;
-
+// Repository interface for managing Booking entities in MongoDB, providing methods for querying bookings based on user, resource, and status
 import com.smartcampus.model.Booking;
 import com.smartcampus.model.BookingStatus;
 import org.springframework.data.mongodb.repository.MongoRepository;

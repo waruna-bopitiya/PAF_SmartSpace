@@ -5,7 +5,7 @@ public enum BookingStatus {
     APPROVED,
     REJECTED,
     CANCELLED;
-
+// Method to convert a string to a BookingStatus enum, defaulting to PENDING if the input is invalid
     public static BookingStatus fromString(String value) {
         try {
             return BookingStatus.valueOf(value.toUpperCase());
