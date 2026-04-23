@@ -285,6 +285,78 @@ const AdminDashboard = () => {
     }
   };
 
+  // Handle Date Time Input Validation
+  const handleDateChange = (field, value, isWeekendField) => {
+    if (!value) {
+      setResourceForm({ ...resourceForm, [field]: value });
+      return;
+    }
+
+    const selectedDate = new Date(value);
+    const day = selectedDate.getDay();
+
+    if (isWeekendField) {
+      if (day >= 1 && day <= 5) {
+        alert("❌ Invalid selection: You selected a weekday! Weekend times must fall on Saturday or Sunday.");
+        return;
+      }
+    } else {
+      if (day === 0 || day === 6) {
+        alert("❌ Invalid selection: You selected a weekend! Weekday times must fall on Monday through Friday.");
+        return;
+      }
+    }
+
+    // Time progression inline check
+    const getTime = (dateStr) => {
+      if (!dateStr) return null;
+      return dateStr.includes('T') ? dateStr.split('T')[1].substring(0, 5) : dateStr.substring(0, 5);
+    };
+
+    const newTime = getTime(value);
+
+    if (field === 'weekdayOpenTime' && resourceForm.weekdayCloseTime) {
+      const closeTime = getTime(resourceForm.weekdayCloseTime);
+      if (closeTime && closeTime <= newTime) {
+        alert("❌ Invalid selection: Weekday Open Time must be earlier than the Close Time.");
+        return;
+      }
+    }
+    
+    if (field === 'weekdayCloseTime' && resourceForm.weekdayOpenTime) {
+      const openTime = getTime(resourceForm.weekdayOpenTime);
+      if (openTime && newTime <= openTime) {
+        alert("❌ Invalid selection: Weekday Close Time must be later than the Open Time.");
+        return;
+      }
+    }
+
+    if (field === 'weekendOpenTime' && resourceForm.weekendCloseTime) {
+      const closeTime = getTime(resourceForm.weekendCloseTime);
+      if (closeTime && closeTime <= newTime) {
+        alert("❌ Invalid selection: Weekend Open Time must be earlier than the Close Time.");
+        return;
+      }
+    }
+    
+    if (field === 'weekendCloseTime' && resourceForm.weekendOpenTime) {
+      const openTime = getTime(resourceForm.weekendOpenTime);
+      if (openTime && newTime <= openTime) {
+        alert("❌ Invalid selection: Weekend Close Time must be later than the Open Time.");
+        return;
+      }
+    }
+
+    setResourceForm({ ...resourceForm, [field]: value });
+  };
+
+  const getMinDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+  const minDateTime = getMinDateTime();
+
   // Handle Add/Update Resource
   const handleSaveResource = async (e) => {
     e.preventDefault();
@@ -891,16 +963,18 @@ const AdminDashboard = () => {
                     <label>Weekday Open Time</label>
                     <input
                       type="datetime-local"
+                      min={minDateTime}
                       value={resourceForm.weekdayOpenTime || ''}
-                      onChange={(e) => setResourceForm({ ...resourceForm, weekdayOpenTime: e.target.value })}
+                      onChange={(e) => handleDateChange('weekdayOpenTime', e.target.value, false)}
                     />
                   </div>
                   <div className="form-group">
                     <label>Weekday Close Time</label>
                     <input
                       type="datetime-local"
+                      min={minDateTime}
                       value={resourceForm.weekdayCloseTime || ''}
-                      onChange={(e) => setResourceForm({ ...resourceForm, weekdayCloseTime: e.target.value })}
+                      onChange={(e) => handleDateChange('weekdayCloseTime', e.target.value, false)}
                     />
                   </div>
                 </div>
@@ -909,16 +983,18 @@ const AdminDashboard = () => {
                     <label>Weekend Open Time</label>
                     <input
                       type="datetime-local"
+                      min={minDateTime}
                       value={resourceForm.weekendOpenTime || ''}
-                      onChange={(e) => setResourceForm({ ...resourceForm, weekendOpenTime: e.target.value })}
+                      onChange={(e) => handleDateChange('weekendOpenTime', e.target.value, true)}
                     />
                   </div>
                   <div className="form-group">
                     <label>Weekend Close Time</label>
                     <input
                       type="datetime-local"
+                      min={minDateTime}
                       value={resourceForm.weekendCloseTime || ''}
-                      onChange={(e) => setResourceForm({ ...resourceForm, weekendCloseTime: e.target.value })}
+                      onChange={(e) => handleDateChange('weekendCloseTime', e.target.value, true)}
                     />
                   </div>
                 </div>
