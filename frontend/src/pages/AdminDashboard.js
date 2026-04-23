@@ -39,6 +39,7 @@ const AdminDashboard = () => {
   const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
   const [isEditingResource, setIsEditingResource] = useState(false);
   const [qrResource, setQrResource] = useState(null); // resource to show QR for
+  const [formErrors, setFormErrors] = useState([]);
 
   // Modal
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -287,10 +288,56 @@ const AdminDashboard = () => {
   // Handle Add/Update Resource
   const handleSaveResource = async (e) => {
     e.preventDefault();
-    if (!resourceForm.name || !resourceForm.type || !resourceForm.location || resourceForm.capacity === '') {
-      alert('❌ Missing required fields: Name, Type, Location, and Capacity');
+    const errors = [];
+
+    if (!resourceForm.name?.trim()) errors.push('Resource Name is required.');
+    if (!resourceForm.type) errors.push('Type is required.');
+    if (!resourceForm.location?.trim()) errors.push('Location is required.');
+    
+    if (resourceForm.capacity === '' || resourceForm.capacity === null) {
+      errors.push('Capacity is required.');
+    } else {
+      const cap = parseInt(resourceForm.capacity, 10);
+      if (isNaN(cap) || cap <= 0) {
+        errors.push('Capacity must be a positive integer greater than 0.');
+      }
+    }
+
+    const getTimeVal = (dateStr) => {
+      if (!dateStr) return null;
+      if (dateStr.includes('T')) {
+        return dateStr.split('T')[1].substring(0, 5);
+      }
+      return dateStr.substring(0, 5);
+    };
+
+    const wdOpen = getTimeVal(resourceForm.weekdayOpenTime);
+    const wdClose = getTimeVal(resourceForm.weekdayCloseTime);
+
+    if (wdOpen || wdClose) {
+      if (!wdOpen) errors.push('Weekday Open Time is required if Close Time is set.');
+      if (!wdClose) errors.push('Weekday Close Time is required if Open Time is set.');
+      if (wdOpen && wdClose && wdClose <= wdOpen) {
+        errors.push('Weekday Close Time must be after Weekday Open Time.');
+      }
+    }
+
+    const weOpen = getTimeVal(resourceForm.weekendOpenTime);
+    const weClose = getTimeVal(resourceForm.weekendCloseTime);
+
+    if (weOpen || weClose) {
+      if (!weOpen) errors.push('Weekend Open Time is required if Close Time is set.');
+      if (!weClose) errors.push('Weekend Close Time is required if Open Time is set.');
+      if (weOpen && weClose && weClose <= weOpen) {
+        errors.push('Weekend Close Time must be after Weekend Open Time.');
+      }
+    }
+
+    if (errors.length > 0) {
+      setFormErrors(errors);
       return;
     }
+    setFormErrors([]);
 
     try {
       const formData = {
@@ -339,6 +386,7 @@ const AdminDashboard = () => {
       }
       setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
       setIsEditingResource(false);
+      setFormErrors([]);
     } catch (error) {
       console.error('Error saving resource:', error);
       const errorMsg = error.response?.data?.errors ? Object.entries(error.response.data.errors).map(([k, v]) => `${k}: ${v}`).join(', ') : (error.response?.data?.message || error.message);
@@ -350,6 +398,7 @@ const AdminDashboard = () => {
   const handleEditResource = (resource) => {
     setResourceForm(resource);
     setIsEditingResource(true);
+    setFormErrors([]);
   };
 
   // Handle Delete Resource
@@ -763,6 +812,13 @@ const AdminDashboard = () => {
 
             <div className="admin-form">
               <h3>{isEditingResource ? 'Edit Resource' : 'Add New Resource'}</h3>
+              {formErrors.length > 0 && (
+                <div className="form-errors" style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '10px', borderRadius: '4px', marginBottom: '15px' }}>
+                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                    {formErrors.map((err, i) => <li key={i}>{err}</li>)}
+                  </ul>
+                </div>
+              )}
               <form onSubmit={handleSaveResource}>
                 <div className="form-row">
                   <div className="form-group">
@@ -877,6 +933,7 @@ const AdminDashboard = () => {
                       onClick={() => {
                         setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
                         setIsEditingResource(false);
+                        setFormErrors([]);
                       }}
                     >
                       Cancel
