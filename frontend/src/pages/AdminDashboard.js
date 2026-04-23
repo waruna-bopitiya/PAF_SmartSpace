@@ -489,6 +489,33 @@ const AdminDashboard = () => {
     }
   };
 
+  // Handle Toggle Resource Status
+  const handleToggleResourceStatus = async (resource) => {
+    const id = resource.id || resource._id;
+    const currentStatus = resource.status;
+    const newStatus = currentStatus === 'ACTIVE' ? 'MAINTENANCE' : 'ACTIVE';
+    
+    if (!window.confirm(`Are you sure you want to change status to ${newStatus}?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await resourceAPI.updateStatus(id, newStatus);
+      
+      setResources(prev => prev.map(r => 
+        (r._id || r.id) === id ? { ...r, status: newStatus } : r
+      ));
+      
+      alert(`✅ Resource status changed to ${newStatus}`);
+    } catch (error) {
+      console.error('Error toggling status:', error);
+      alert('❌ Failed to update status: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Handle Delete Booking
   const handleDeleteBooking = async (bookingId) => {
     if (!window.confirm('Are you sure you want to delete this booking?')) return;
@@ -1060,6 +1087,13 @@ const AdminDashboard = () => {
                         <td><span className={`status ${resource.status?.toLowerCase()}`}>{resource.status}</span></td>
                         <td>
                           <button className="btn-small btn-primary" onClick={() => handleEditResource(resource)}>Edit</button>
+                          <button 
+                            className={`btn-small ${resource.status === 'ACTIVE' ? 'btn-warning' : 'btn-success'}`}
+                            onClick={() => handleToggleResourceStatus(resource)}
+                            disabled={loading}
+                          >
+                            {resource.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                          </button>
                           <button className="btn-small btn-danger" onClick={() => handleDeleteResource(resource.id)}>Delete</button>
                           <button className="btn-small btn-qr" onClick={() => setQrResource(resource)} title="Print QR Code for this resource">🖨️ Print QR</button>
                         </td>
