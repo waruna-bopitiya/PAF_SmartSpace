@@ -17,4 +17,6 @@ public interface UserRepository extends MongoRepository<User, String> {
     List<User> findByRole(UserRole role);
 
     boolean existsByEmail(String email);
+
+    <T> ScopedValue<T> findByEmail(String usernameOrEmail);
 }
