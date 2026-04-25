@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Build and Test CI/CD Pipeline
 
 on:
   push:
@@ -10,85 +10,120 @@ jobs:
   backend-build:
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        java-version: ['17']
-    
     steps:
     - uses: actions/checkout@v3
     
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
-        java-version: ${{ matrix.java-version }}
+        java-version: '17'
         distribution: 'temurin'
         cache: maven
     
-    - name: Build backend with Maven
+    - name: Build with Maven
+      run: cd backend && mvn clean install -DskipTests
+    
+    - name: Run Tests
+      run: cd backend && mvn test
+    
+    - name: SonarQube Analysis (Optional)
+      if: always()
       run: |
         cd backend
-        mvn clean package -DskipTests
-    
-    - name: Run backend tests
-      run: |
-        cd backend
-        mvn test
-    
-    - name: Upload backend artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: backend-jar
-        path: backend/target/*.jar
+        mvn sonar:sonar \
+          -Dsonar.projectKey=smartcampus-api \
+          -Dsonar.sources=src \
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }} || true
 
   frontend-build:
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        node-version: [18.x]
-    
     steps:
     - uses: actions/checkout@v3
     
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: '18'
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
     
-    - name: Install frontend dependencies
-      run: |
-        cd frontend
-        npm install
+    - name: Install dependencies
+      run: cd frontend && npm ci
     
-    - name: Build frontend
-      run: |
-        cd frontend
-        npm run build
-      env:
-        REACT_APP_API_URL: http://localhost:8080/api
+    - name: Build Frontend
+      run: cd frontend && npm run build
     
-    - name: Upload frontend artifacts
-      uses: actions/upload-artifact@v3
+    - name: Run Tests (if available)
+      run: cd frontend && npm test -- --coverage || true
+    
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      if: always()
       with:
-        name: frontend-build
-        path: frontend/build
-    
-  code-quality:
+        files: ./frontend/coverage/coverage-final.json
+
+  security-scan:
     runs-on: ubuntu-latest
-    needs: [backend-build, frontend-build]
     
     steps:
     - uses: actions/checkout@v3
     
-    - name: Run backend linter check
-      run: |
-        cd backend
-        mvn checkstyle:check || true
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'smartcampus'
+        path: '.'
+        format: 'JSON'
+        args: >
+          --enableExperimental
+
+  docker-build:
+    needs: [backend-build, frontend-build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
-    - name: Generate build report
-      run: |
-        echo "Build completed successfully!"
-        echo "Backend: ✓"
-        echo "Frontend: ✓"
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Build and push backend image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./backend
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/smartcampus-backend:latest
+          ${{ secrets.DOCKER_USERNAME }}/smartcampus-backend:${{ github.sha }}
+    
+    - name: Build and push frontend image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./frontend
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/smartcampus-frontend:latest
+          ${{ secrets.DOCKER_USERNAME }}/smartcampus-frontend:${{ github.sha }}
+
+  notify:
+    needs: [backend-build, frontend-build, security-scan]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notify on Success
+      if: success()
+      run: echo "✅ Build pipeline completed successfully!"
+    
+    - name: Notify on Failure
+      if: failure()
+      run: echo "❌ Build pipeline failed!"
