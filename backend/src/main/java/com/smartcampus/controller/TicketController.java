@@ -24,7 +24,9 @@ import java.util.stream.Collectors;
 
 import com.smartcampus.exception.ResourceNotFoundException;
 import com.smartcampus.model.TicketAttachment;
+import com.smartcampus.repository.TicketAttachmentRepository;
 import com.smartcampus.service.FileUploadService;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/tickets")
@@ -40,15 +42,18 @@ public class TicketController {
     @Autowired
     private FileUploadService fileUploadService;
 
+    @Autowired
+    private TicketAttachmentRepository ticketAttachmentRepository;
+
     /**
      * Get all tickets with pagination
      * GET /tickets?page=0&size=10
      */
     @GetMapping
     public ResponseEntity<?> getAllTickets(@RequestParam(defaultValue = "0") int page,
-                                          @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size) {
         try {
-            Pageable pageable = PageRequest.of(page, size);
+            Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
             Page<Ticket> tickets = ticketService.getAllTickets(pageable);
             Page<TicketDTO> dtos = tickets.map(t -> modelMapper.map(t, TicketDTO.class));
             return ResponseEntity.ok(dtos);
@@ -131,7 +136,8 @@ public class TicketController {
     }
 
     /**
-     * Get ticket by ID (must be after specific routes like /status/open and /resource/{resourceId})
+     * Get ticket by ID (must be after specific routes like /status/open and
+     * /resource/{resourceId})
      * GET /tickets/{id}
      */
     @GetMapping("/{id}")
@@ -172,7 +178,7 @@ public class TicketController {
      */
     @PatchMapping("/{id}")
     public ResponseEntity<?> updateTicket(@PathVariable String id,
-                                         @Valid @RequestBody TicketDTO ticketDTO) {
+            @Valid @RequestBody TicketDTO ticketDTO) {
         try {
             Ticket ticketDetails = modelMapper.map(ticketDTO, Ticket.class);
             Ticket updatedTicket = ticketService.updateTicket(id, ticketDetails);
@@ -190,7 +196,7 @@ public class TicketController {
      */
     @PutMapping("/{id}/assign")
     public ResponseEntity<?> assignTicket(@PathVariable String id,
-                                         @RequestParam String technicianId) {
+            @RequestParam String technicianId) {
         try {
             Ticket assignedTicket = ticketService.assignTicket(id, technicianId);
             TicketDTO responseDTO = modelMapper.map(assignedTicket, TicketDTO.class);
@@ -207,8 +213,8 @@ public class TicketController {
      */
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateTicketStatus(@PathVariable String id,
-                                               @RequestParam String status,
-                                               @RequestParam(required = false) String resolutionNotes) {
+            @RequestParam String status,
+            @RequestParam(required = false) String resolutionNotes) {
         try {
             TicketStatus ticketStatus = TicketStatus.fromString(status);
             Ticket updatedTicket = ticketService.updateTicketStatus(id, ticketStatus, resolutionNotes);
@@ -226,7 +232,7 @@ public class TicketController {
      */
     @PutMapping("/{id}/reject")
     public ResponseEntity<?> rejectTicket(@PathVariable String id,
-                                         @RequestParam String reason) {
+            @RequestParam String reason) {
         try {
             Ticket rejectedTicket = ticketService.rejectTicket(id, reason);
             TicketDTO responseDTO = modelMapper.map(rejectedTicket, TicketDTO.class);
@@ -259,7 +265,7 @@ public class TicketController {
      */
     @PostMapping("/{id}/comments")
     public ResponseEntity<?> addComment(@PathVariable String id,
-                                       @Valid @RequestBody CommentDTO commentDTO) {
+            @Valid @RequestBody CommentDTO commentDTO) {
         try {
             TicketComment comment = ticketService.addComment(
                     id,
@@ -267,8 +273,7 @@ public class TicketController {
                     commentDTO.getUserName(),
                     commentDTO.getUserEmail(),
                     commentDTO.getContent(),
-                    commentDTO.getStaffComment()
-            );
+                    commentDTO.getStaffComment());
             CommentDTO responseDTO = modelMapper.map(comment, CommentDTO.class);
             return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
         } catch (Exception e) {
@@ -301,8 +306,8 @@ public class TicketController {
      */
     @DeleteMapping("/{id}/comments/{commentId}")
     public ResponseEntity<?> deleteComment(@PathVariable String id,
-                                           @PathVariable String commentId,
-                                           @RequestParam String userId) {
+            @PathVariable String commentId,
+            @RequestParam String userId) {
         try {
             ticketService.deleteComment(id, commentId, userId);
             return ResponseEntity.ok("Comment deleted successfully");
@@ -349,10 +354,8 @@ public class TicketController {
                         .body("Maximum 3 attachments per ticket");
             }
 
-            // Upload file
-            TicketAttachment attachment = fileUploadService.uploadFile(file, id, auth.getName());
-
-            // Add attachment ID to ticket
+            String uploadedBy = (auth != null) ? auth.getName() : "anonymous";
+            TicketAttachment attachment = fileUploadService.uploadFile(file, id, uploadedBy);
             ticketService.addAttachment(id, attachment.getId());
 
             return ResponseEntity.status(HttpStatus.CREATED).body(attachment);
@@ -362,6 +365,28 @@ public class TicketController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Invalid file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get all attachments for a ticket
+     * GET /tickets/{id}/attachments
+     */
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<?> getTicketAttachments(@PathVariable String id) {
+        try {
+            Ticket ticket = ticketService.getTicketById(id);
+            List<String> attachmentIds = ticket.getAttachmentIds();
+            if (attachmentIds == null || attachmentIds.isEmpty()) {
+                return ResponseEntity.ok(java.util.Collections.emptyList());
+            }
+            List<TicketAttachment> attachments = ticketAttachmentRepository.findAllById(attachmentIds);
+            return ResponseEntity.ok(attachments);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Ticket not found");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error fetching attachments: " + e.getMessage());
         }
     }
 

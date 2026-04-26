@@ -14,7 +14,7 @@ const normalizeApiBaseUrl = (baseUrl) => {
   return `${trimmed}/api`;
 };
 
-const API_BASE_URL = normalizeApiBaseUrl(process.env.REACT_APP_API_BASE_URL);
+export const API_BASE_URL = normalizeApiBaseUrl(process.env.REACT_APP_API_BASE_URL);
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -133,7 +133,7 @@ export const bookingAPI = {
 
 // ===== TICKET ENDPOINTS =====
 export const ticketAPI = {
-  getAll: (page = 0, size = 10) =>
+  getAll: (page = 0, size = 100) =>
     apiClient.get('/tickets', { params: { page, size } }),
   getById: (id) =>
     apiClient.get(`/tickets/${id}`),
@@ -163,6 +163,15 @@ export const ticketAPI = {
     apiClient.post(`/tickets/${ticketId}/comments`, commentData),
   deleteComment: (ticketId, commentId, userId) =>
     apiClient.delete(`/tickets/${ticketId}/comments/${commentId}`, { params: { userId } }),
+  uploadAttachment: (ticketId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post(`/tickets/${ticketId}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getAttachments: (ticketId) =>
+    apiClient.get(`/tickets/${ticketId}/attachments`),
   delete: (id) =>
     apiClient.delete(`/tickets/${id}`),
 };
