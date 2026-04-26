@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { ticketAPI, resourceAPI } from '../services/api';
 import '../styles/Tickets.css';
 
 const Tickets = () => {
   const { user } = useContext(AuthContext);
+  const location = useLocation();
   const [tickets, setTickets] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -14,6 +16,10 @@ const Tickets = () => {
   const [success, setSuccess] = useState('');
   const [ticketDetails, setTicketDetails] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  // QR scan pre-fill state
+  const [qrResourceId, setQrResourceId] = useState('');
+  const [qrResourceName, setQrResourceName] = useState('');
+  const [fromQR, setFromQR] = useState(false);
   const [formData, setFormData] = useState({
     resourceId: '',
     title: '',
@@ -48,6 +54,20 @@ const Tickets = () => {
     fetchTickets();
     fetchResources();
   }, [fetchTickets, fetchResources]);
+
+  // On mount, parse QR params from URL and auto-open form if present
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const rid = params.get('resourceId');
+    const rname = params.get('resourceName') || '';
+    if (rid) {
+      setQrResourceId(rid);
+      setQrResourceName(rname ? decodeURIComponent(rname) : rid);
+      setFromQR(true);
+      setFormData(prev => ({ ...prev, resourceId: rid }));
+      setShowForm(true); // Auto-open form
+    }
+  }, [location.search]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -102,7 +122,7 @@ const Tickets = () => {
 
       setSuccess('Ticket created successfully!');
       setFormData({
-        resourceId: '',
+        resourceId: qrResourceId || '',  // keep QR resource if present
         title: '',
         description: '',
         category: 'MAINTENANCE',
@@ -112,6 +132,7 @@ const Tickets = () => {
       });
       setAttachments([]);
       setShowForm(false);
+      setFromQR(false);
       fetchTickets();
     } catch (err) {
       console.error('Error creating ticket:', err);
@@ -221,22 +242,42 @@ const Tickets = () => {
         <form onSubmit={handleSubmit} className="booking-form">
           <h2>Report Issue</h2>
 
+          {/* QR Scan Banner */}
+          {fromQR && qrResourceName && (
+            <div className="qr-scan-banner">
+              <span className="qr-scan-icon">📱</span>
+              <div>
+                <strong>Scanned via QR Code</strong>
+                <p>Resource has been automatically selected for you.</p>
+              </div>
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="resourceId">Affected Resource *</label>
-            <select
-              id="resourceId"
-              name="resourceId"
-              value={formData.resourceId}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="">Select a resource...</option>
-              {resources.map(resource => (
-                <option key={resource._id} value={resource._id}>
-                  {resource.name} - {resource.location}
-                </option>
-              ))}
-            </select>
+            {fromQR && qrResourceId ? (
+              // Read-only display when coming from QR scan
+              <div className="qr-resource-locked">
+                <span className="qr-lock-icon">🔒</span>
+                <span className="qr-resource-display-name">{qrResourceName}</span>
+                <input type="hidden" name="resourceId" value={qrResourceId} />
+              </div>
+            ) : (
+              <select
+                id="resourceId"
+                name="resourceId"
+                value={formData.resourceId}
+                onChange={handleInputChange}
+                required
+              >
+                <option value="">Select a resource...</option>
+                {resources.map(resource => (
+                  <option key={resource._id} value={resource._id}>
+                    {resource.name} - {resource.location}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="form-group">

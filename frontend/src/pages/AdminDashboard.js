@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { userAPI, bookingAPI, ticketAPI, resourceAPI } from '../services/api';
+import ResourceQRPrint from './ResourceQRPrint';
 import '../styles/AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -26,6 +27,7 @@ const AdminDashboard = () => {
   const [resources, setResources] = useState([]);
   const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', status: 'AVAILABLE', capacity: '' });
   const [isEditingResource, setIsEditingResource] = useState(false);
+  const [qrResource, setQrResource] = useState(null); // resource to show QR for
   
   // Modal
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -40,46 +42,71 @@ const AdminDashboard = () => {
     totalResources: 0,
   });
 
-  // Fetch Dashboard Data
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [usersRes, bookingsRes, ticketsRes, resourcesRes] = await Promise.all([
-          userAPI.getAll(),
-          bookingAPI.getAll(),
-          ticketAPI.getAll(),
-          resourceAPI.getAll(),
-        ]);
+  // Fetch errors
+  const [fetchError, setFetchError] = useState('');
 
-        // Handle different response formats
-        // Users returns direct array, others return paginated objects
-        const usersData = Array.isArray(usersRes.data) ? usersRes.data : [];
-        const bookingsData = bookingsRes.data?.content || bookingsRes.data || [];
-        const ticketsData = ticketsRes.data?.content || ticketsRes.data || [];
-        const resourcesData = resourcesRes.data?.content || resourcesRes.data || [];
+  // Fetch Dashboard Data — each API fetched independently so one 403 doesn't kill the rest
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setFetchError('');
+    const errors = [];
 
-        setUsers(usersData);
-        setBookings(bookingsData);
-        setTickets(ticketsData);
-        setResources(resourcesData);
+    // ── Users (ADMIN only) ──
+    try {
+      const res = await userAPI.getAll();
+      const data = Array.isArray(res.data) ? res.data : [];
+      setUsers(data);
+      setStats(s => ({ ...s, totalUsers: data.length }));
+    } catch (e) {
+      console.error('Users fetch error:', e.response?.status, e.response?.data || e.message);
+      errors.push(`Users: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
+    }
 
-        setStats({
-          totalUsers: usersData.length || 0,
-          totalBookings: bookingsData.length || 0,
-          openTickets: ticketsData.filter(t => t.status === 'OPEN').length || 0,
-          totalResources: resourcesData.length || 0,
-        });
-      } catch (error) {
-        console.error('Error fetching admin data:', error);
-        console.error('Error details:', error.response?.data || error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // ── Bookings ──
+    try {
+      const res = await bookingAPI.getAll();
+      const data = res.data?.content || res.data || [];
+      setBookings(Array.isArray(data) ? data : []);
+      setStats(s => ({ ...s, totalBookings: Array.isArray(data) ? data.length : 0 }));
+    } catch (e) {
+      console.error('Bookings fetch error:', e.response?.status, e.response?.data || e.message);
+      errors.push(`Bookings: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
+    }
 
-    fetchData();
+    // ── Tickets ──
+    try {
+      const res = await ticketAPI.getAll();
+      const data = res.data?.content || res.data || [];
+      const arr = Array.isArray(data) ? data : [];
+      setTickets(arr);
+      setStats(s => ({ ...s, openTickets: arr.filter(t => t.status === 'OPEN').length }));
+    } catch (e) {
+      console.error('Tickets fetch error:', e.response?.status, e.response?.data || e.message);
+      errors.push(`Tickets: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
+    }
+
+    // ── Resources ──
+    try {
+      const res = await resourceAPI.getAll();
+      const data = res.data?.content || res.data || [];
+      const arr = Array.isArray(data) ? data : [];
+      setResources(arr);
+      setStats(s => ({ ...s, totalResources: arr.length }));
+    } catch (e) {
+      console.error('Resources fetch error:', e.response?.status, e.response?.data || e.message);
+      errors.push(`Resources: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
+    }
+
+    if (errors.length > 0) {
+      setFetchError(`Some data could not be loaded — ${errors.join(' | ')}`);
+    }
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
 
   // Listen for resource create/update/delete events to keep dashboard in sync
   useEffect(() => {
@@ -372,6 +399,16 @@ const AdminDashboard = () => {
 
       {/* Content Areas */}
       <div className="admin-content">
+
+        {/* Error Banner */}
+        {fetchError && (
+          <div className="admin-fetch-error">
+            <span>⚠️ {fetchError}</span>
+            <button className="btn-small btn-primary" onClick={fetchData} style={{ marginLeft: 16 }}>
+              🔄 Retry
+            </button>
+          </div>
+        )}
 
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
@@ -750,6 +787,7 @@ const AdminDashboard = () => {
                         <td>
                           <button className="btn-small btn-primary" onClick={() => handleEditResource(resource)}>Edit</button>
                           <button className="btn-small btn-danger" onClick={() => handleDeleteResource(resource.id)}>Delete</button>
+                          <button className="btn-small btn-qr" onClick={() => setQrResource(resource)} title="Print QR Code for this resource">🖨️ Print QR</button>
                         </td>
                       </tr>
                     ))
@@ -762,6 +800,14 @@ const AdminDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Resource QR Print Modal */}
+      {qrResource && (
+        <ResourceQRPrint
+          resource={qrResource}
+          onClose={() => setQrResource(null)}
+        />
+      )}
 
       {/* Booking Approval Modal */}
       {showBookingModal && selectedBooking && (

@@ -599,3 +599,62 @@
   padding: 10px 20px;
   font-size: 14px;
 }
+
+/* ===== QR Scan Banner ===== */
+.qr-scan-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border: 1px solid #c4b5fd;
+  border-left: 4px solid #7c3aed;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  animation: slideDown 0.3s ease-in-out;
+}
+
+.qr-scan-icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.qr-scan-banner strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #4c1d95;
+  margin-bottom: 3px;
+}
+
+.qr-scan-banner p {
+  margin: 0;
+  font-size: 13px;
+  color: #6d28d9;
+}
+
+/* ===== Locked Resource Display (QR flow) ===== */
+.qr-resource-locked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f5f3ff;
+  border: 2px solid #c4b5fd;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4c1d95;
+  cursor: not-allowed;
+}
+
+.qr-lock-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.qr-resource-display-name {
+  flex: 1;
+  color: #4c1d95;
+}
