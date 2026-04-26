@@ -93,10 +93,10 @@ const AdminDashboard = () => {
     return existingBookings.some(booking => {
       if (booking.id === newBooking.id || booking.status === 'REJECTED') return false;
       
-      const newStart = new Date(newBooking.startDateTime);
-      const newEnd = new Date(newBooking.endDateTime);
-      const existStart = new Date(booking.startDateTime);
-      const existEnd = new Date(booking.endDateTime);
+      const newStart = new Date(newBooking.startTime || newBooking.startDateTime);
+      const newEnd = new Date(newBooking.endTime || newBooking.endDateTime);
+      const existStart = new Date(booking.startTime || booking.startDateTime);
+      const existEnd = new Date(booking.endTime || booking.endDateTime);
       
       // Check if same resource and overlapping time
       return booking.resourceId === newBooking.resourceId &&
@@ -146,15 +146,20 @@ const AdminDashboard = () => {
     }
 
     try {
+      await bookingAPI.approve(
+        booking.id,
+        approvalReason,
+        user?.id || user?.email || 'admin'
+      );
       setBookings(bookings.map(b => 
-        b.id === booking.id ? { ...b, status: 'CONFIRMED', approvedReason: approvalReason } : b
+        b.id === booking.id ? { ...b, status: 'APPROVED', approvalReason: approvalReason } : b
       ));
       setShowBookingModal(false);
       setApprovalReason('');
       alert('✅ Booking approved successfully');
     } catch (error) {
       console.error('Error approving booking:', error);
-      alert('Failed to approve booking');
+      alert('Failed to approve booking: ' + (error.response?.data?.error || error.response?.data || error.message));
     }
   };
 
@@ -162,22 +167,42 @@ const AdminDashboard = () => {
   const handleRejectBooking = async (booking) => {
     if (!window.confirm('Are you sure you want to reject this booking?')) return;
 
+    if (!approvalReason?.trim()) {
+      alert('Please provide a rejection reason');
+      return;
+    }
+
     try {
+      await bookingAPI.reject(booking.id, approvalReason.trim());
       setBookings(bookings.map(b => 
-        b.id === booking.id ? { ...b, status: 'REJECTED', rejectReason: approvalReason } : b
+        b.id === booking.id ? { ...b, status: 'REJECTED', rejectionReason: approvalReason } : b
       ));
       setApprovalReason('');
       alert('Booking rejected');
     } catch (error) {
       console.error('Error rejecting booking:', error);
-      alert('Failed to reject booking');
+      alert('Failed to reject booking: ' + (error.response?.data?.error || error.response?.data || error.message));
     }
   };
 
   // Handle Update Booking Status
   const handleUpdateBookingStatus = async (bookingId, newStatus) => {
     try {
-      await bookingAPI.update(bookingId, { status: newStatus });
+      if (newStatus === 'APPROVED') {
+        await bookingAPI.approve(bookingId, approvalReason, user?.id || user?.email || 'admin');
+      } else if (newStatus === 'REJECTED') {
+        const reason = window.prompt('Enter rejection reason:') || approvalReason;
+        if (!reason?.trim()) {
+          alert('Rejection reason is required');
+          return;
+        }
+        await bookingAPI.reject(bookingId, reason.trim());
+      } else if (newStatus === 'CANCELLED') {
+        await bookingAPI.cancel(bookingId);
+      } else {
+        await bookingAPI.update(bookingId, { status: newStatus });
+      }
+
       setBookings(bookings.map(b => 
         b.id === bookingId ? { ...b, status: newStatus } : b
       ));
@@ -301,7 +326,11 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this booking?')) return;
     
     try {
-      const id = bookingId._id || bookingId;
+      const id = typeof bookingId === 'object' ? (bookingId?.id || bookingId?._id) : bookingId;
+      if (!id) {
+        alert('Failed to delete booking: Invalid booking ID');
+        return;
+      }
       await bookingAPI.delete(id);
       setBookings(bookings.filter(b => (b._id || b.id) !== id));
       alert('✅ Booking deleted successfully');
@@ -550,8 +579,8 @@ const AdminDashboard = () => {
                         <td>{booking.id?.substring(0, 8)}...</td>
                         <td>{booking.resourceId}</td>
                         <td>{booking.userId}</td>
-                        <td>{new Date(booking.startDateTime).toLocaleString()}</td>
-                        <td>{new Date(booking.endDateTime).toLocaleString()}</td>
+                        <td>{new Date(booking.startTime || booking.startDateTime).toLocaleString()}</td>
+                        <td>{new Date(booking.endTime || booking.endDateTime).toLocaleString()}</td>
                         <td>
                           <select 
                             value={booking.status}
@@ -822,8 +851,8 @@ const AdminDashboard = () => {
               <div className="booking-details">
                 <p><strong>Resource:</strong> {selectedBooking.resourceId}</p>
                 <p><strong>User:</strong> {selectedBooking.userId}</p>
-                <p><strong>Start Date:</strong> {new Date(selectedBooking.startDateTime).toLocaleString()}</p>
-                <p><strong>End Date:</strong> {new Date(selectedBooking.endDateTime).toLocaleString()}</p>
+                <p><strong>Start Date:</strong> {new Date(selectedBooking.startTime || selectedBooking.startDateTime).toLocaleString()}</p>
+                <p><strong>End Date:</strong> {new Date(selectedBooking.endTime || selectedBooking.endDateTime).toLocaleString()}</p>
               </div>
               <div className="form-group">
                 <label>Approval Notes (Optional)</label>
