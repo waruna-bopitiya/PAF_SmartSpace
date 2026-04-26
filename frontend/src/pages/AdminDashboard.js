@@ -593,7 +593,6 @@ const AdminDashboard = () => {
                 <option value="PENDING">Pending Approval</option>
                 <option value="APPROVED">Approved</option>
                 <option value="REJECTED">Rejected</option>
-                <option value="CANCELLED">Cancelled</option>
                 <option value="ALL">All Bookings</option>
               </select>
             </div>
@@ -635,14 +634,12 @@ const AdminDashboard = () => {
                                 booking.status === 'APPROVED' ? '#d4edda' :
                                 booking.status === 'PENDING' ? '#fff3cd' :
                                 booking.status === 'REJECTED' ? '#f8d7da' :
-                                booking.status === 'CANCELLED' ? '#e2e3e5' :
                                 '#ffffff'
                             }}
                           >
                             <option value="PENDING">Pending</option>
                             <option value="APPROVED">Approved</option>
                             <option value="REJECTED">Rejected</option>
-                            <option value="CANCELLED">Cancelled</option>
                           </select>
                         </td>
                         <td>

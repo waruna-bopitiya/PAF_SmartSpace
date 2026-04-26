@@ -158,9 +158,13 @@ public class BookingService {
             throw new IllegalArgumentException("Only pending bookings can be approved");
         }
         
-        // Check for conflicts again
-        if (hasConflict(booking.getResourceId(), booking.getStartTime(), booking.getEndTime(), id)) {
-            throw new BookingConflictException("Time slot is no longer available");
+        // Check for conflicts against APPROVED bookings only
+        List<Booking> approvedBookings = bookingRepository.findByResourceIdAndStatus(booking.getResourceId(), BookingStatus.APPROVED);
+        for (Booking b : approvedBookings) {
+            if (id != null && b.getId() != null && b.getId().equals(id)) continue;
+            if (booking.getStartTime().isBefore(b.getEndTime()) && booking.getEndTime().isAfter(b.getStartTime())) {
+                throw new BookingConflictException("Time slot is no longer available as it has already been approved for another user.");
+            }
         }
         
         booking.setStatus(BookingStatus.APPROVED);
@@ -241,6 +245,14 @@ public class BookingService {
         );
         
         return savedBooking;
+    }
+
+    /**
+     * Delete booking
+     */
+    public void deleteBooking(String id) {
+        Booking booking = getBookingById(id);
+        bookingRepository.delete(booking);
     }
 
     /**

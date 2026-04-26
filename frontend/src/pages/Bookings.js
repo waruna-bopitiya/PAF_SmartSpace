@@ -444,7 +444,7 @@ const Bookings = () => {
                       </span>
                     </td>
                     <td>
-                      {(booking.status === 'PENDING' || booking.status === 'APPROVED') && (
+                      {booking.status === 'PENDING' && (
                         <button
                           className="btn btn-sm btn-danger"
                           onClick={() => handleCancel(booking._id)}

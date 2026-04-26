@@ -375,3 +375,24 @@
   background-color: #f8fafc;
   border-color: #e2e8f0;
 }
+
+/* Status Badges */
+.badge-success {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.badge-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-danger {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-secondary {
+  background-color: #f1f5f9;
+  color: #475569;
+}
