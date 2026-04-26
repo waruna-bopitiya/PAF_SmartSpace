@@ -63,7 +63,7 @@ public class UserController {
      * GET /api/users/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getUserById(@PathVariable String id) {
         try {
             Optional<User> user = userService.getUserById(id);

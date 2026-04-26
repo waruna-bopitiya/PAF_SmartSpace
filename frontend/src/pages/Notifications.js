@@ -1,22 +1,19 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { notificationAPI } from '../services/api';
 import '../styles/Notifications.css';
 
 const Notifications = () => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, unread
   const [page, setPage] = useState(0);
 
-  useEffect(() => {
-    fetchNotifications();
-    fetchUnreadCount();
-  }, [user?.id, filter, page]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
       let response;
@@ -31,16 +28,23 @@ const Notifications = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, filter, page]);
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
     try {
       const response = await notificationAPI.getUnreadCount(user?.id);
-      setUnreadCount(response.data.count || 0);
+      setUnreadCount(response.data.count || response.data.unreadCount || 0);
     } catch (error) {
       console.error('Error fetching unread count:', error);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchNotifications();
+    fetchUnreadCount();
+  }, [fetchNotifications, fetchUnreadCount]);
+
+
 
   const handleMarkAsRead = async (notificationId) => {
     try {
@@ -84,40 +88,7 @@ const Notifications = () => {
     }
   };
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'BOOKING_CREATED':
-      case 'BOOKING_APPROVED':
-      case 'BOOKING_REJECTED':
-        return '📅';
-      case 'TICKET_CREATED':
-      case 'TICKET_ASSIGNED':
-      case 'TICKET_CLOSED':
-        return '🎟️';
-      case 'COMMENT_ADDED':
-        return '💬';
-      default:
-        return '📢';
-    }
-  };
 
-  const getNotificationColor = (type) => {
-    switch (type) {
-      case 'BOOKING_APPROVED':
-      case 'TICKET_CLOSED':
-        return 'success';
-      case 'BOOKING_REJECTED':
-      case 'TICKET_ASSIGNED':
-        return 'warning';
-      case 'BOOKING_CREATED':
-      case 'TICKET_CREATED':
-        return 'info';
-      case 'SYSTEM':
-        return 'secondary';
-      default:
-        return 'primary';
-    }
-  };
 
   if (loading && notifications.length === 0) {
     return <div className="loading">Loading notifications...</div>;
@@ -125,13 +96,21 @@ const Notifications = () => {
 
   return (
     <div className="notifications-container">
-      <div className="notifications-header">
-        <h1>Notifications</h1>
-        <div className="header-stats">
-          <span className="unread-badge">Unread: {unreadCount}</span>
+      <div className="notifications-header-card">
+        <div className="notifications-header">
+          <div>
+            <h1>Notifications</h1>
+            <p className="header-subtitle">Stay updated with bookings, tickets, and important system activity.</p>
+          </div>
+          <div className="header-stats">
+            <span className="unread-badge">Unread: {unreadCount}</span>
+          </div>
+        </div>
+
+        <div className="header-actions">
           {unreadCount > 0 && (
             <button
-              className="btn btn-sm btn-primary"
+              className="notif-btn notif-btn-primary"
               onClick={handleMarkAllAsRead}
             >
               Mark All as Read
@@ -139,7 +118,7 @@ const Notifications = () => {
           )}
           {notifications.length > 0 && (
             <button
-              className="btn btn-sm btn-danger"
+              className="notif-btn notif-btn-danger"
               onClick={handleDeleteAll}
             >
               Clear All
@@ -166,54 +145,80 @@ const Notifications = () => {
             setPage(0);
           }}
         >
-          Unread ({unreadCount})
+          Unread
+          {unreadCount > 0 && (
+            <span className="notif-badge-danger">
+              {unreadCount}
+            </span>
+          )}
         </button>
       </div>
 
       {/* Notifications List */}
       <div className="notifications-list">
         {notifications.length > 0 ? (
-          notifications.map(notification => (
+          [...notifications]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .map(notification => (
             <div
-              key={notification._id}
-              className={`notification-item ${!notification.isRead ? 'unread' : ''}`}
+              key={notification._id || notification.id}
+              className={`notification-card ${!notification.isRead ? 'unread' : ''}`}
+              style={{
+                padding: '15px',
+                backgroundColor: notification.isRead ? '#f8f9fa' : '#e3f2fd',
+                borderLeft: `4px solid ${notification.isRead ? '#ccc' : '#0056b3'}`,
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '5px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                marginBottom: '10px'
+              }}
+              onClick={async () => {
+                if (!notification.isRead) {
+                  await handleMarkAsRead(notification._id || notification.id);
+                }
+                
+                // Navigate based on type
+                if (notification.type.includes('TICKET') || notification.type === 'COMMENT_ADDED') {
+                  navigate('/tickets');
+                } else if (notification.type.includes('BOOKING')) {
+                  navigate('/bookings');
+                }
+              }}
             >
-              <div className="notification-icon">
-                <span>{getNotificationIcon(notification.type)}</span>
-              </div>
-
-              <div className="notification-content">
-                <h3>{notification.title}</h3>
-                <p>{notification.message}</p>
-                <span className="notification-time">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong style={{ fontSize: '1.1em', color: '#1f2937' }}>{notification.title}</strong>
+                <span style={{ fontSize: '0.85em', color: '#666' }}>
                   {new Date(notification.createdAt).toLocaleString()}
                 </span>
-                {notification.actionUrl && (
-                  <span className="notification-action">
-                    <a href={notification.actionUrl}>View details →</a>
-                  </span>
-                )}
               </div>
-
-              <div className="notification-badge">
-                <span className={`badge badge-${getNotificationColor(notification.type)}`}>
+              <p style={{ margin: '4px 0', color: '#444', lineHeight: '1.4' }}>{notification.message}</p>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                <span style={{ fontSize: '0.8em', color: '#0056b3', fontWeight: 'bold' }}>
                   {notification.type.replace(/_/g, ' ')}
                 </span>
-              </div>
-
-              <div className="notification-actions">
-                {!notification.isRead && (
-                  <button
-                    className="btn-icon"
-                    onClick={() => handleMarkAsRead(notification._id)}
-                    title="Mark as read"
-                  >
-                    ✓
-                  </button>
-                )}
+                
                 <button
                   className="btn-icon btn-delete"
-                  onClick={() => handleDelete(notification._id)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#dc2626',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '4px'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent navigating when clicking delete
+                    handleDelete(notification._id || notification.id);
+                  }}
                   title="Delete"
                 >
                   ✕
@@ -223,6 +228,7 @@ const Notifications = () => {
           ))
         ) : (
           <div className="no-notifications">
+            <span className="empty-icon">🔔</span>
             <p>No {filter === 'unread' ? 'unread' : ''} notifications</p>
           </div>
         )}

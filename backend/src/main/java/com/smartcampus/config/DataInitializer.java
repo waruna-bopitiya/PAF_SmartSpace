@@ -36,6 +36,23 @@ public class DataInitializer {
                 userRepository.save(testUser);
                 System.out.println("✅ Test user created: test@smartcampus.com / Test@123");
             }
+
+            // Create default technician user if it doesn't exist
+            if (userRepository.findByEmail("technician@gmail.com").isEmpty()) {
+                User technicianUser = new User();
+                technicianUser.setEmail("technician@gmail.com");
+                technicianUser.setPassword(passwordEncoder.encode("technicianPass123"));
+                technicianUser.setFullName("Campus Technician");
+                technicianUser.setRole(UserRole.TECHNICIAN);
+                technicianUser.setActive(true);
+                technicianUser.setCreatedAt(LocalDateTime.now());
+                technicianUser.setUpdatedAt(LocalDateTime.now());
+                technicianUser.setDepartment("Maintenance");
+                technicianUser.setPhoneNumber("1234567891");
+
+                userRepository.save(technicianUser);
+                System.out.println("✅ Technician user created: technician@gmail.com / technicianPass123");
+            }
             
             // Create sample resources if they don't exist
             if (resourceRepository.count() == 0) {

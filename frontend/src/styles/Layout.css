@@ -1,0 +1,258 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f8fafc;
+}
+
+.navbar {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: white;
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.navbar-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-brand h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.navbar-menu {
+  display: flex;
+  list-style: none;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  flex: 1;
+  margin-left: 40px;
+}
+
+.navbar-menu a {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.navbar-menu a:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.navbar-notification {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-notification .badge {
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  background-color: #ef4444;
+  color: white;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.navbar-user span {
+  padding: 8px 16px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.logout-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.logout-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.main-content {
+  flex: 1;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+@media (max-width: 768px) {
+  .navbar-content {
+    flex-wrap: wrap;
+  }
+  
+  .navbar-menu {
+    margin-left: 0;
+    margin-top: 12px;
+    width: 100%;
+    order: 3;
+  }
+  
+  .navbar-user {
+    margin-left: 0;
+  }
+}
+
+.navbar-user span {
+  padding: 8px 16px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.logout-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.logout-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.main-content {
+  flex: 1;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+@media (max-width: 768px) {
+  .navbar-content {
+    flex-wrap: wrap;
+  }
+  
+  .navbar-menu {
+    margin-left: 0;
+    margin-top: 12px;
+    width: 100%;
+    order: 3;
+  }
+  
+  .navbar-user {
+    margin-left: 0;
+  }
+}
+
+.logout-btn:hover {
+  background-color: #c0392b;
+}
+
+.main-content {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 30px 20px;
+}
+
+@media (max-width: 768px) {
+  .navbar-content {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .navbar-menu {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .navbar-user {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+  }
+}
+
+/* Role-based styling */
+.role-label {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.role-label.admin {
+  background-color: #ef4444;
+  color: white;
+}
+
+.role-label.user {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.role-label.technician {
+  background-color: #0d9488;
+  color: white;
+}
+
+.admin-badge {
+  display: inline-block;
+  background-color: #ef4444;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}

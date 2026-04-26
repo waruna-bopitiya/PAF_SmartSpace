@@ -1,3 +1,4 @@
+com\smartcampus\dto\RegisterRequest.class
 com\smartcampus\model\BookingComment.class
 com\smartcampus\config\DataInitializer.class
 com\smartcampus\model\TicketCategory.class
