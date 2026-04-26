@@ -11,7 +11,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -64,13 +67,18 @@ public class BookingService {
      * Check for booking conflicts
      */
     public boolean hasConflict(String resourceId, LocalDateTime startTime, LocalDateTime endTime, String excludeBookingId) {
-        List<Booking> bookings = bookingRepository.findByResourceIdAndStatus(resourceId, BookingStatus.APPROVED);
+        List<Booking> approvedBookings = bookingRepository.findByResourceIdAndStatus(resourceId, BookingStatus.APPROVED);
+        List<Booking> pendingBookings = bookingRepository.findByResourceIdAndStatus(resourceId, BookingStatus.PENDING);
         
-        for (Booking booking : bookings) {
-            if (excludeBookingId != null && booking.getId().equals(excludeBookingId)) {
+        List<Booking> activeBookings = new ArrayList<>();
+        activeBookings.addAll(approvedBookings);
+        activeBookings.addAll(pendingBookings);
+        
+        for (Booking booking : activeBookings) {
+            if (excludeBookingId != null && booking.getId() != null && booking.getId().equals(excludeBookingId)) {
                 continue;
             }
-            // Check if times overlap
+            // Check if times overlap (start is before other ends AND end is after other starts)
             if (startTime.isBefore(booking.getEndTime()) && endTime.isAfter(booking.getStartTime())) {
                 return true;
             }
@@ -96,8 +104,28 @@ public class BookingService {
             if (booking.getEndTime() == null) {
                 throw new IllegalArgumentException("End time is required");
             }
-            if (booking.getEndTime().isBefore(booking.getStartTime())) {
+            if (booking.getEndTime().isBefore(booking.getStartTime()) || booking.getEndTime().isEqual(booking.getStartTime())) {
                 throw new IllegalArgumentException("End time must be after start time");
+            }
+            
+            // Time restrictions: booking must be within the same day
+            LocalDate startDate = booking.getStartTime().toLocalDate();
+            LocalDate endDate = booking.getEndTime().toLocalDate();
+            if (!startDate.isEqual(endDate)) {
+                throw new IllegalArgumentException("Booking must be within the same day");
+            }
+            
+            // Time restrictions: 7:45 AM to 8:30 PM
+            LocalTime startTimeLocal = booking.getStartTime().toLocalTime();
+            LocalTime endTimeLocal = booking.getEndTime().toLocalTime();
+            LocalTime openTime = LocalTime.of(7, 45);
+            LocalTime closeTime = LocalTime.of(20, 30);
+            
+            if (startTimeLocal.isBefore(openTime)) {
+                throw new IllegalArgumentException("Bookings cannot start before 7:45 AM");
+            }
+            if (endTimeLocal.isAfter(closeTime)) {
+                throw new IllegalArgumentException("Bookings cannot end after 8:30 PM");
             }
             
             // Check for conflicts
