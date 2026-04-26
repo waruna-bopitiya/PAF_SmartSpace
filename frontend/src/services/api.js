@@ -103,7 +103,7 @@ export const resourceAPI = {
 
 // ===== BOOKING ENDPOINTS =====
 export const bookingAPI = {
-  getAll: (page = 0, size = 10) =>
+  getAll: (page = 0, size = 100) =>
     apiClient.get('/bookings', { params: { page, size } }),
   getById: (id) =>
     apiClient.get(`/bookings/${id}`),
@@ -121,12 +121,14 @@ export const bookingAPI = {
     apiClient.post('/bookings', data),
   update: (id, data) =>
     apiClient.patch(`/bookings/${id}`, data),
-  approve: (id, reason) =>
-    apiClient.put(`/bookings/${id}/approve`, { reason }),
+  approve: (id, reason, approvedBy) =>
+    apiClient.put(`/bookings/${id}/approve`, null, { params: { reason, approvedBy } }),
   reject: (id, reason) =>
-    apiClient.put(`/bookings/${id}/reject`, { reason }),
-  cancel: (id) =>
-    apiClient.put(`/bookings/${id}/cancel`, {}),
+    apiClient.put(`/bookings/${id}/reject`, null, { params: { reason } }),
+  cancel: (id, reason) =>
+    apiClient.put(`/bookings/${id}/cancel`, null, { params: { reason } }),
+  delete: (id) =>
+    apiClient.delete(`/bookings/${id}`),
 };
 
 // ===== TICKET ENDPOINTS =====

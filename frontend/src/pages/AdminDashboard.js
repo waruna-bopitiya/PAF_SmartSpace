@@ -648,7 +648,6 @@ const AdminDashboard = () => {
                 <option value="PENDING">Pending Approval</option>
                 <option value="APPROVED">Approved</option>
                 <option value="REJECTED">Rejected</option>
-                <option value="CANCELLED">Cancelled</option>
                 <option value="ALL">All Bookings</option>
               </select>
             </div>
@@ -671,51 +670,49 @@ const AdminDashboard = () => {
                     bookings
                       .filter(b => bookingFilter === 'ALL' || b.status === bookingFilter)
                       .map(booking => (
-                        <tr key={booking.id}>
-                          <td>{booking.id?.substring(0, 8)}...</td>
-                          <td>{booking.resourceId}</td>
-                          <td>{booking.userId}</td>
-                          <td>{new Date(booking.startTime || booking.startDateTime).toLocaleString()}</td>
-                          <td>{new Date(booking.endTime || booking.endDateTime).toLocaleString()}</td>
-                          <td>
-                            <select
-                              value={booking.status}
-                              onChange={(e) => handleUpdateBookingStatus(booking.id, e.target.value)}
-                              className="status-dropdown"
-                              style={{
-                                padding: '5px 8px',
-                                borderRadius: '4px',
-                                border: '1px solid #ddd',
-                                backgroundColor:
-                                  booking.status === 'APPROVED' ? '#d4edda' :
-                                    booking.status === 'PENDING' ? '#fff3cd' :
-                                      booking.status === 'REJECTED' ? '#f8d7da' :
-                                        booking.status === 'CANCELLED' ? '#e2e3e5' :
-                                          '#ffffff'
-                              }}
-                            >
-                              <option value="PENDING">Pending</option>
-                              <option value="APPROVED">Approved</option>
-                              <option value="REJECTED">Rejected</option>
-                              <option value="CANCELLED">Cancelled</option>
-                            </select>
-                          </td>
-                          <td>
-                            {booking.status === 'PENDING' ? (
-                              <>
-                                <button
-                                  className="btn-small btn-success"
-                                  onClick={() => handleUpdateBookingStatus(booking.id, 'APPROVED')}
-                                >
-                                  Quick Approve
-                                </button>
-                              </>
-                            ) : (
-                              <button className="btn-small btn-danger" onClick={() => handleDeleteBooking(booking.id)}>Delete</button>
-                            )}
-                          </td>
-                        </tr>
-                      ))
+                      <tr key={booking.id}>
+                        <td>{booking.id?.substring(0, 8)}...</td>
+                        <td>{booking.resourceId}</td>
+                        <td>{booking.userId}</td>
+                        <td>{new Date(booking.startTime || booking.startDateTime).toLocaleString()}</td>
+                        <td>{new Date(booking.endTime || booking.endDateTime).toLocaleString()}</td>
+                        <td>
+                          <select 
+                            value={booking.status}
+                            onChange={(e) => handleUpdateBookingStatus(booking.id, e.target.value)}
+                            className="status-dropdown"
+                            style={{
+                              padding: '5px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid #ddd',
+                              backgroundColor: 
+                                booking.status === 'APPROVED' ? '#d4edda' :
+                                booking.status === 'PENDING' ? '#fff3cd' :
+                                booking.status === 'REJECTED' ? '#f8d7da' :
+                                '#ffffff'
+                            }}
+                          >
+                            <option value="PENDING">Pending</option>
+                            <option value="APPROVED">Approved</option>
+                            <option value="REJECTED">Rejected</option>
+                          </select>
+                        </td>
+                        <td>
+                          {booking.status === 'PENDING' ? (
+                            <>
+                              <button 
+                                className="btn-small btn-success" 
+                                onClick={() => handleUpdateBookingStatus(booking.id, 'APPROVED')}
+                              >
+                                Quick Approve
+                              </button>
+                            </>
+                          ) : (
+                            <button className="btn-small btn-danger" onClick={() => handleDeleteBooking(booking.id)}>Delete</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
                   ) : (
                     <tr><td colSpan="7" className="text-center">No bookings found</td></tr>
                   )}

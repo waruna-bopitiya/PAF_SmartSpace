@@ -35,9 +35,9 @@ public class BookingController {
      */
     @GetMapping
     public ResponseEntity<?> getAllBookings(@RequestParam(defaultValue = "0") int page,
-                                           @RequestParam(defaultValue = "10") int size) {
+                                           @RequestParam(defaultValue = "100") int size) {
         try {
-            Pageable pageable = PageRequest.of(page, size);
+            Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id"));
             Page<Booking> bookings = bookingService.getAllBookings(pageable);
             Page<BookingDTO> dtos = bookings.map(b -> modelMapper.map(b, BookingDTO.class));
             return ResponseEntity.ok(dtos);
@@ -214,6 +214,21 @@ public class BookingController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(java.util.Map.of("error", "Error cancelling booking: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Delete booking
+     * DELETE /bookings/{id}
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteBooking(@PathVariable String id) {
+        try {
+            bookingService.deleteBooking(id);
+            return ResponseEntity.ok(java.util.Map.of("message", "Booking deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("error", "Error deleting booking: " + e.getMessage()));
         }
     }
 
