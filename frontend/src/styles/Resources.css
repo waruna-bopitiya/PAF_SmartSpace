@@ -1,0 +1,150 @@
+.resources-container {
+  padding: 0;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.resources-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  padding: 0 24px;
+}
+
+.resources-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.add-resource-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 0 24px;
+}
+
+.resource-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.resource-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.resource-card-header {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+}
+
+.resource-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+  flex: 1;
+}
+
+.resource-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 12px;
+}
+
+.type-room {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.type-equipment {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.type-facility {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.resource-status {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+.status-available {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.status-occupied {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-maintenance {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.resource-info {
+  font-size: 13px;
+  color: #64748b;
+  margin: 12px 0 0 0;
+  flex: 1;
+}
+
+.resource-info p {
+  margin: 6px 0;
+}
+
+.resource-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.resource-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: #64748b;
+  font-size: 16px;
+}
