@@ -24,7 +24,7 @@ const AdminDashboard = () => {
   
   // Resources Management
   const [resources, setResources] = useState([]);
-  const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', status: 'AVAILABLE', capacity: '' });
+  const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
   const [isEditingResource, setIsEditingResource] = useState(false);
   
   // Modal
@@ -63,6 +63,8 @@ const AdminDashboard = () => {
         setBookings(bookingsData);
         setTickets(ticketsData);
         setResources(resourcesData);
+        
+        console.log('Resources loaded:', resourcesData);
 
         setStats({
           totalUsers: usersData.length || 0,
@@ -73,39 +75,17 @@ const AdminDashboard = () => {
       } catch (error) {
         console.error('Error fetching admin data:', error);
         console.error('Error details:', error.response?.data || error.message);
+        // Set empty data on error to show UI
+        setUsers([]);
+        setBookings([]);
+        setTickets([]);
+        setResources([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
-
-  // Listen for resource create/update/delete events to keep dashboard in sync
-  useEffect(() => {
-    const handleResourcesUpdated = (e) => {
-      try {
-        const detail = e?.detail || {};
-        const action = detail.action;
-        if (action === 'created') {
-          const created = detail.resource;
-          setResources((prev) => [created, ...prev]);
-          setStats((s) => ({ ...s, totalResources: (s.totalResources || 0) + 1 }));
-        } else if (action === 'updated') {
-          const updated = detail.resource;
-          setResources((prev) => prev.map(r => (r.id === updated.id || r._id === updated.id || r.id === updated._id) ? updated : r));
-        } else if (action === 'deleted') {
-          const id = detail.resourceId;
-          setResources((prev) => prev.filter(r => (r.id || r._id) !== id));
-          setStats((s) => ({ ...s, totalResources: Math.max(0, (s.totalResources || 0) - 1) }));
-        }
-      } catch (err) {
-        console.error('Error handling resources-updated event', err);
-      }
-    };
-
-    window.addEventListener('resources-updated', handleResourcesUpdated);
-    return () => window.removeEventListener('resources-updated', handleResourcesUpdated);
   }, []);
 
   // Check for booking time conflicts
@@ -239,27 +219,58 @@ const AdminDashboard = () => {
   // Handle Add/Update Resource
   const handleSaveResource = async (e) => {
     e.preventDefault();
-    if (!resourceForm.name || !resourceForm.type) {
-      alert('Please fill in all fields');
+    if (!resourceForm.name || !resourceForm.type || !resourceForm.location || resourceForm.capacity === '') {
+      alert('❌ Missing required fields: Name, Type, Location, and Capacity');
       return;
     }
 
     try {
+      const formData = {
+        name: resourceForm.name,
+        type: resourceForm.type,
+        location: resourceForm.location,
+        capacity: parseInt(resourceForm.capacity, 10),
+        description: resourceForm.description || '',
+        status: resourceForm.status
+      };
+
       if (isEditingResource) {
+        // UPDATE existing resource
+        const response = await resourceAPI.update(resourceForm._id || resourceForm.id, formData);
         setResources(resources.map(r => 
-          r.id === resourceForm.id ? resourceForm : r
+          (r._id || r.id) === (resourceForm._id || resourceForm.id) ? response.data : r
         ));
         alert('✅ Resource updated successfully');
       } else {
-        const newResource = { ...resourceForm, id: Date.now().toString() };
-        setResources([...resources, newResource]);
+        // CREATE new resource
+        const response = await resourceAPI.create(formData);
+        console.log('New resource response:', response);
+        console.log('Response data:', response.data);
+        console.log('Current resources before add:', resources);
+        const updatedResources = [...resources, response.data];
+        console.log('Updated resources after add:', updatedResources);
+        setResources(updatedResources);
+        
+        // Also fetch fresh data from server to ensure sync
+        setTimeout(async () => {
+          try {
+            const freshRes = await resourceAPI.getAll(0, 10);
+            const freshData = freshRes.data?.content || freshRes.data || [];
+            console.log('Fresh resources from server:', freshData);
+            setResources(freshData);
+          } catch (err) {
+            console.error('Error refreshing resources:', err);
+          }
+        }, 500);
+        
         alert('✅ Resource added successfully');
       }
-      setResourceForm({ id: null, name: '', type: '', status: 'AVAILABLE', capacity: '' });
+      setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
       setIsEditingResource(false);
     } catch (error) {
       console.error('Error saving resource:', error);
-      alert('Failed to save resource');
+      const errorMsg = error.response?.data?.errors ? Object.entries(error.response.data.errors).map(([k, v]) => `${k}: ${v}`).join(', ') : (error.response?.data?.message || error.message);
+      alert('❌ Failed to save resource: ' + errorMsg);
     }
   };
 
@@ -274,11 +285,14 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this resource?')) return;
     
     try {
-      setResources(resources.filter(r => r.id !== resourceId));
-      alert('Resource deleted successfully');
+      // Use _id for MongoDB, fallback to id if needed
+      const id = resourceId._id || resourceId;
+      await resourceAPI.delete(id);
+      setResources(resources.filter(r => (r._id || r.id) !== id));
+      alert('✅ Resource deleted successfully');
     } catch (error) {
       console.error('Error deleting resource:', error);
-      alert('Failed to delete resource');
+      alert('Failed to delete resource: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -287,11 +301,13 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this booking?')) return;
     
     try {
-      setBookings(bookings.filter(b => b.id !== bookingId));
-      alert('Booking deleted successfully');
+      const id = bookingId._id || bookingId;
+      await bookingAPI.delete(id);
+      setBookings(bookings.filter(b => (b._id || b.id) !== id));
+      alert('✅ Booking deleted successfully');
     } catch (error) {
       console.error('Error deleting booking:', error);
-      alert('Failed to delete booking');
+      alert('Failed to delete booking: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -300,11 +316,13 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this ticket?')) return;
     
     try {
-      setTickets(tickets.filter(t => t.id !== ticketId));
-      alert('Ticket deleted successfully');
+      const id = ticketId._id || ticketId;
+      await ticketAPI.delete(id);
+      setTickets(tickets.filter(t => (t._id || t.id) !== id));
+      alert('✅ Ticket deleted successfully');
     } catch (error) {
       console.error('Error deleting ticket:', error);
-      alert('Failed to delete ticket');
+      alert('Failed to delete ticket: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -677,16 +695,39 @@ const AdminDashboard = () => {
                       onChange={(e) => setResourceForm({...resourceForm, type: e.target.value})}
                     >
                       <option value="">Select Type</option>
-                      <option value="ROOM">Room</option>
+                      <option value="LECTURE_HALL">Lecture Hall</option>
+                      <option value="LAB">Lab</option>
+                      <option value="MEETING_ROOM">Meeting Room</option>
                       <option value="EQUIPMENT">Equipment</option>
-                      <option value="VEHICLE">Vehicle</option>
+                      <option value="OUTDOOR_SPACE">Outdoor Space</option>
+                      <option value="PARKING">Parking</option>
                       <option value="OTHER">Other</option>
                     </select>
                   </div>
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Capacity</label>
+                    <label>Location *</label>
+                    <input
+                      type="text"
+                      value={resourceForm.location}
+                      onChange={(e) => setResourceForm({...resourceForm, location: e.target.value})}
+                      placeholder="e.g., Building A, Floor 2"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      value={resourceForm.description}
+                      onChange={(e) => setResourceForm({...resourceForm, description: e.target.value})}
+                      placeholder="Optional description"
+                      rows="2"
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Capacity *</label>
                     <input
                       type="number"
                       value={resourceForm.capacity}
@@ -700,9 +741,10 @@ const AdminDashboard = () => {
                       value={resourceForm.status}
                       onChange={(e) => setResourceForm({...resourceForm, status: e.target.value})}
                     >
-                      <option value="AVAILABLE">Available</option>
-                      <option value="UNAVAILABLE">Unavailable</option>
+                      <option value="ACTIVE">Active</option>
+                      <option value="OUT_OF_SERVICE">Out of Service</option>
                       <option value="MAINTENANCE">Maintenance</option>
+                      <option value="RETIRED">Retired</option>
                     </select>
                   </div>
                 </div>
@@ -715,7 +757,7 @@ const AdminDashboard = () => {
                       type="button" 
                       className="btn btn-secondary"
                       onClick={() => {
-                        setResourceForm({ id: null, name: '', type: '', status: 'AVAILABLE', capacity: '' });
+                        setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
                         setIsEditingResource(false);
                       }}
                     >
@@ -727,13 +769,16 @@ const AdminDashboard = () => {
             </div>
 
             <div className="admin-table">
+              <p style={{color: '#666', fontSize: '12px', marginBottom: '10px'}}>Total Resources: <strong>{resources.length}</strong></p>
               <table>
                 <thead>
                   <tr>
                     <th>Resource ID</th>
                     <th>Name</th>
                     <th>Type</th>
+                    <th>Location</th>
                     <th>Capacity</th>
+                    <th>Description</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -741,20 +786,22 @@ const AdminDashboard = () => {
                 <tbody>
                   {resources.length > 0 ? (
                     resources.map(resource => (
-                      <tr key={resource.id}>
-                        <td>{resource.id?.substring(0, 8)}...</td>
+                      <tr key={resource._id || resource.id}>
+                        <td>{(resource._id || resource.id)?.substring(0, 8)}...</td>
                         <td>{resource.name}</td>
                         <td>{resource.type}</td>
+                        <td>{resource.location || 'N/A'}</td>
                         <td>{resource.capacity || 'N/A'}</td>
+                        <td>{resource.description || 'N/A'}</td>
                         <td><span className={`status ${resource.status?.toLowerCase()}`}>{resource.status}</span></td>
                         <td>
                           <button className="btn-small btn-primary" onClick={() => handleEditResource(resource)}>Edit</button>
-                          <button className="btn-small btn-danger" onClick={() => handleDeleteResource(resource.id)}>Delete</button>
+                          <button className="btn-small btn-danger" onClick={() => handleDeleteResource(resource._id || resource.id)}>Delete</button>
                         </td>
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan="6" className="text-center">No resources found</td></tr>
+                    <tr><td colSpan="8" className="text-center">No resources found</td></tr>
                   )}
                 </tbody>
               </table>
