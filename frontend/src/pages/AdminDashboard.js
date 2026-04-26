@@ -12,6 +12,14 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(true);
 
+  // Resolve a userId to a display name using the already-loaded users list
+  const getUserName = (userId) => {
+    if (!userId) return 'Unknown';
+    const found = users.find(u => u.id === userId || u._id === userId);
+    if (found) return found.fullName || found.email || userId;
+    return userId;
+  };
+
   const formatTime = (dateString) => {
     if (!dateString) return '';
     try {
@@ -865,7 +873,7 @@ const AdminDashboard = () => {
                           <td>{ticket.category}</td>
                           <td><span className={`priority ${ticket.priority?.toLowerCase()}`}>{ticket.priority}</span></td>
                           <td><span className={`status ${ticket.status?.toLowerCase()}`}>{ticket.status}</span></td>
-                          <td>{ticket.createdBy}</td>
+                          <td>{getUserName(ticket.createdBy)}</td>
                           <td>
                             {ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS' ? (
                               <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
