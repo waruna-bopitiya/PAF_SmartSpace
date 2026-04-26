@@ -1,5 +1,6 @@
 package com.smartcampus.integration;
 
+// Integration tests for ResourceController using MockMvc to test REST endpoints
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.*;
