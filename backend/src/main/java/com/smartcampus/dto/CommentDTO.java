@@ -1,17 +1,11 @@
 package com.smartcampus.dto;
 
-<<<<<<< HEAD
-import jakarta.validation.constraints.*;
-import java.time.LocalDateTime;
-
-=======
 import java.time.LocalDateTime;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
->>>>>>> Dev
 public class CommentDTO {
     private String id;
 
