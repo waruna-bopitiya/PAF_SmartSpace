@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { userAPI, bookingAPI, ticketAPI, resourceAPI } from '../services/api';
 import ResourceQRPrint from './ResourceQRPrint';
+import { RESOURCE_TYPES, formatResourceType } from '../config/resourceTypes';
 import '../styles/AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -110,30 +111,13 @@ const AdminDashboard = () => {
 
   // Listen for resource create/update/delete events to keep dashboard in sync
   useEffect(() => {
-    const handleResourcesUpdated = (e) => {
-      try {
-        const detail = e?.detail || {};
-        const action = detail.action;
-        if (action === 'created') {
-          const created = detail.resource;
-          setResources((prev) => [created, ...prev]);
-          setStats((s) => ({ ...s, totalResources: (s.totalResources || 0) + 1 }));
-        } else if (action === 'updated') {
-          const updated = detail.resource;
-          setResources((prev) => prev.map(r => (r.id === updated.id || r._id === updated.id || r.id === updated._id) ? updated : r));
-        } else if (action === 'deleted') {
-          const id = detail.resourceId;
-          setResources((prev) => prev.filter(r => (r.id || r._id) !== id));
-          setStats((s) => ({ ...s, totalResources: Math.max(0, (s.totalResources || 0) - 1) }));
-        }
-      } catch (err) {
-        console.error('Error handling resources-updated event', err);
-      }
+    const handleResourcesUpdated = () => {
+      fetchData();
     };
 
     window.addEventListener('resources-updated', handleResourcesUpdated);
     return () => window.removeEventListener('resources-updated', handleResourcesUpdated);
-  }, []);
+  }, [fetchData]);
 
   // Check for booking time conflicts
   const hasBookingConflict = (newBooking, existingBookings) => {
@@ -781,13 +765,9 @@ const AdminDashboard = () => {
                       onChange={(e) => setResourceForm({...resourceForm, type: e.target.value})}
                     >
                       <option value="">Select Type</option>
-                      <option value="LECTURE_HALL">Lecture Hall</option>
-                      <option value="LAB">Lab</option>
-                      <option value="MEETING_ROOM">Meeting Room</option>
-                      <option value="EQUIPMENT">Equipment</option>
-                      <option value="OUTDOOR_SPACE">Outdoor Space</option>
-                      <option value="PARKING">Parking</option>
-                      <option value="OTHER">Other</option>
+                      {RESOURCE_TYPES.map(type => (
+                        <option key={type} value={type}>{formatResourceType(type)}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
