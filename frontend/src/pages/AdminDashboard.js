@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { userAPI, bookingAPI, ticketAPI, resourceAPI } from '../services/api';
+import ResourceQRPrint from './ResourceQRPrint';
 import '../styles/AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -26,6 +27,7 @@ const AdminDashboard = () => {
   const [resources, setResources] = useState([]);
   const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
   const [isEditingResource, setIsEditingResource] = useState(false);
+  const [qrResource, setQrResource] = useState(null); // resource to show QR for
   
   // Modal
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -40,52 +42,97 @@ const AdminDashboard = () => {
     totalResources: 0,
   });
 
-  // Fetch Dashboard Data
+  // Fetch errors
+  const [fetchError, setFetchError] = useState('');
+
+  // Fetch Dashboard Data — each API fetched independently so one 403 doesn't kill the rest
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setFetchError('');
+    const errors = [];
+
+    // ── Users (ADMIN only) ──
+    try {
+      const res = await userAPI.getAll();
+      const data = Array.isArray(res.data) ? res.data : [];
+      setUsers(data);
+      setStats(s => ({ ...s, totalUsers: data.length }));
+    } catch (e) {
+      console.error('Users fetch error:', e.response?.status, e.response?.data || e.message);
+      errors.push(`Users: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
+    }
+
+    // ── Bookings ──
+    try {
+      const res = await bookingAPI.getAll();
+      const data = res.data?.content || res.data || [];
+      setBookings(Array.isArray(data) ? data : []);
+      setStats(s => ({ ...s, totalBookings: Array.isArray(data) ? data.length : 0 }));
+    } catch (e) {
+      console.error('Bookings fetch error:', e.response?.status, e.response?.data || e.message);
+      errors.push(`Bookings: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
+    }
+
+    // ── Tickets ──
+    try {
+      const res = await ticketAPI.getAll();
+      const data = res.data?.content || res.data || [];
+      const arr = Array.isArray(data) ? data : [];
+      setTickets(arr);
+      setStats(s => ({ ...s, openTickets: arr.filter(t => t.status === 'OPEN').length }));
+    } catch (e) {
+      console.error('Tickets fetch error:', e.response?.status, e.response?.data || e.message);
+      errors.push(`Tickets: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
+    }
+
+    // ── Resources ──
+    try {
+      const res = await resourceAPI.getAll();
+      const data = res.data?.content || res.data || [];
+      const arr = Array.isArray(data) ? data : [];
+      setResources(arr);
+      setStats(s => ({ ...s, totalResources: arr.length }));
+    } catch (e) {
+      console.error('Resources fetch error:', e.response?.status, e.response?.data || e.message);
+      errors.push(`Resources: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
+    }
+
+    if (errors.length > 0) {
+      setFetchError(`Some data could not be loaded — ${errors.join(' | ')}`);
+    }
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
-    const fetchData = async () => {
+    fetchData();
+  }, [fetchData]);
+
+
+  // Listen for resource create/update/delete events to keep dashboard in sync
+  useEffect(() => {
+    const handleResourcesUpdated = (e) => {
       try {
-        setLoading(true);
-        const [usersRes, bookingsRes, ticketsRes, resourcesRes] = await Promise.all([
-          userAPI.getAll(),
-          bookingAPI.getAll(),
-          ticketAPI.getAll(),
-          resourceAPI.getAll(),
-        ]);
-
-        // Handle different response formats
-        // Users returns direct array, others return paginated objects
-        const usersData = Array.isArray(usersRes.data) ? usersRes.data : [];
-        const bookingsData = bookingsRes.data?.content || bookingsRes.data || [];
-        const ticketsData = ticketsRes.data?.content || ticketsRes.data || [];
-        const resourcesData = resourcesRes.data?.content || resourcesRes.data || [];
-
-        setUsers(usersData);
-        setBookings(bookingsData);
-        setTickets(ticketsData);
-        setResources(resourcesData);
-        
-        console.log('Resources loaded:', resourcesData);
-
-        setStats({
-          totalUsers: usersData.length || 0,
-          totalBookings: bookingsData.length || 0,
-          openTickets: ticketsData.filter(t => t.status === 'OPEN').length || 0,
-          totalResources: resourcesData.length || 0,
-        });
-      } catch (error) {
-        console.error('Error fetching admin data:', error);
-        console.error('Error details:', error.response?.data || error.message);
-        // Set empty data on error to show UI
-        setUsers([]);
-        setBookings([]);
-        setTickets([]);
-        setResources([]);
-      } finally {
-        setLoading(false);
+        const detail = e?.detail || {};
+        const action = detail.action;
+        if (action === 'created') {
+          const created = detail.resource;
+          setResources((prev) => [created, ...prev]);
+          setStats((s) => ({ ...s, totalResources: (s.totalResources || 0) + 1 }));
+        } else if (action === 'updated') {
+          const updated = detail.resource;
+          setResources((prev) => prev.map(r => (r.id === updated.id || r._id === updated.id || r.id === updated._id) ? updated : r));
+        } else if (action === 'deleted') {
+          const id = detail.resourceId;
+          setResources((prev) => prev.filter(r => (r.id || r._id) !== id));
+          setStats((s) => ({ ...s, totalResources: Math.max(0, (s.totalResources || 0) - 1) }));
+        }
+      } catch (err) {
+        console.error('Error handling resources-updated event', err);
       }
     };
 
-    fetchData();
+    window.addEventListener('resources-updated', handleResourcesUpdated);
+    return () => window.removeEventListener('resources-updated', handleResourcesUpdated);
   }, []);
 
   // Check for booking time conflicts
@@ -419,6 +466,16 @@ const AdminDashboard = () => {
 
       {/* Content Areas */}
       <div className="admin-content">
+
+        {/* Error Banner */}
+        {fetchError && (
+          <div className="admin-fetch-error">
+            <span>⚠️ {fetchError}</span>
+            <button className="btn-small btn-primary" onClick={fetchData} style={{ marginLeft: 16 }}>
+              🔄 Retry
+            </button>
+          </div>
+        )}
 
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
@@ -825,7 +882,8 @@ const AdminDashboard = () => {
                         <td><span className={`status ${resource.status?.toLowerCase()}`}>{resource.status}</span></td>
                         <td>
                           <button className="btn-small btn-primary" onClick={() => handleEditResource(resource)}>Edit</button>
-                          <button className="btn-small btn-danger" onClick={() => handleDeleteResource(resource._id || resource.id)}>Delete</button>
+                          <button className="btn-small btn-danger" onClick={() => handleDeleteResource(resource.id)}>Delete</button>
+                          <button className="btn-small btn-qr" onClick={() => setQrResource(resource)} title="Print QR Code for this resource">🖨️ Print QR</button>
                         </td>
                       </tr>
                     ))
@@ -838,6 +896,14 @@ const AdminDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Resource QR Print Modal */}
+      {qrResource && (
+        <ResourceQRPrint
+          resource={qrResource}
+          onClose={() => setQrResource(null)}
+        />
+      )}
 
       {/* Booking Approval Modal */}
       {showBookingModal && selectedBooking && (
