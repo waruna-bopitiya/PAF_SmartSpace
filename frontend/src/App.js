@@ -23,7 +23,7 @@ function App() {
         <Routes>
           {/* 1. Public Routes - Mewa ProtectedRoute ekakin cover karanne na */}
           <Route path="/login" element={<Login />} />
-          
+
           {/* Google Login iwara wela token eka save karanna ena path eka */}
           <Route path="/auth-success" element={<AuthSuccess />} />
 
@@ -61,7 +61,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/resources"
             element={
@@ -72,7 +72,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/bookings"
             element={
@@ -83,7 +83,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/tickets"
             element={
@@ -94,7 +94,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/notifications"
             element={

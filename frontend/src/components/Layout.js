@@ -42,13 +42,13 @@ const Layout = ({ children }) => {
             <div className="navbar-brand">
               <h1>Smart Campus Hub</h1>
             </div>
-            
+
             {/* User Navigation */}
             <ul className="navbar-menu">
               <li><Link to={isTechnician ? '/technician' : '/'}>{isTechnician ? 'Technician Dashboard' : 'Dashboard'}</Link></li>
               {!isTechnician && <li><Link to="/resources">Resources</Link></li>}
               {!isTechnician && <li><Link to="/bookings">Bookings</Link></li>}
-              {!isTechnician &&<li><Link to="/tickets">Tickets</Link></li>}
+              {!isTechnician && <li><Link to="/tickets">Tickets</Link></li>}
               {!isTechnician && (
                 <li>
                   <Link to="/notifications" className="navbar-notification" style={{ display: 'inline-flex' }}>

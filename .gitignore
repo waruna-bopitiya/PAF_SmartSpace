@@ -31,7 +31,7 @@ ehthumbs_vista.db
 bin/
 
 # --- Node / Frontend Specific ---
-node_modules/
+
 /frontend/node_modules/
 /frontend/build/
 /frontend/dist/
@@ -42,8 +42,8 @@ yarn-error.log*
 .pnp.js
 
 # --- Java / Maven Specific ---
-target/
-/backend/target/
+
+
 *.class
 *.jar
 *.war
