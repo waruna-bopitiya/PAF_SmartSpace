@@ -20,6 +20,13 @@ const AdminDashboard = () => {
     return userId;
   };
 
+  // Resolve a resourceId to a name using the already-loaded resources list
+  const getResourceName = (resourceId) => {
+    if (!resourceId) return 'Unknown';
+    const found = resources.find(r => (r.id === resourceId || r._id === resourceId));
+    return found ? found.name : resourceId;
+  };
+
   const formatTime = (dateString) => {
     if (!dateString) return '';
     try {
@@ -793,8 +800,8 @@ const AdminDashboard = () => {
                       .map(booking => (
                         <tr key={booking.id}>
                           <td>{booking.id?.substring(0, 8)}...</td>
-                          <td>{booking.resourceId}</td>
-                          <td>{booking.userId}</td>
+                          <td>{getResourceName(booking.resourceId)}</td>
+                          <td>{getUserName(booking.userId)}</td>
                           <td>{new Date(booking.startTime || booking.startDateTime).toLocaleString()}</td>
                           <td>{new Date(booking.endTime || booking.endDateTime).toLocaleString()}</td>
                           <td>
@@ -1294,8 +1301,8 @@ const AdminDashboard = () => {
             </div>
             <div className="modal-body">
               <div className="booking-details">
-                <p><strong>Resource:</strong> {selectedBooking.resourceId}</p>
-                <p><strong>User:</strong> {selectedBooking.userId}</p>
+                <p><strong>Resource:</strong> {getResourceName(selectedBooking.resourceId)}</p>
+                <p><strong>User:</strong> {getUserName(selectedBooking.userId)}</p>
                 <p><strong>Start Date:</strong> {new Date(selectedBooking.startTime || selectedBooking.startDateTime).toLocaleString()}</p>
                 <p><strong>End Date:</strong> {new Date(selectedBooking.endTime || selectedBooking.endDateTime).toLocaleString()}</p>
               </div>
