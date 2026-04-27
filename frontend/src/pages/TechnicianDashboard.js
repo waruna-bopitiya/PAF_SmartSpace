@@ -35,7 +35,8 @@ const TechnicianDashboard = () => {
 
         const allTickets = allTicketsRes.data?.content || allTicketsRes.data || [];
         setTickets(allTickets);
-        setNotifications(notificationsRes.data?.content || notificationsRes.data || []);
+        const notifs = notificationsRes.data?.content || notificationsRes.data || [];
+        setNotifications(notifs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
         setUnreadNotifications(unreadRes.data?.count || 0);
       } catch (error) {
         console.error('Error loading technician dashboard:', error);
@@ -221,7 +222,10 @@ const TechnicianDashboard = () => {
           className={`technician-panel-tab ${activePanel === 'notifications' ? 'active' : ''}`}
           onClick={() => setActivePanel('notifications')}
         >
-          Notifications ({unreadNotifications})
+          Notifications
+          {unreadNotifications > 0 && (
+            <span className="technician-notification-bubble">{unreadNotifications}</span>
+          )}
         </button>
       </div>
 
