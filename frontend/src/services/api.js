@@ -96,7 +96,7 @@ export const resourceAPI = {
   update: (id, data) =>
     apiClient.put(`/resources/${id}`, data),
   updateStatus: (id, status) =>
-    apiClient.patch(`/resources/${id}/status`, { status }),
+    apiClient.patch(`/resources/${id}/status?status=${status}`),
   delete: (id) =>
     apiClient.delete(`/resources/${id}`),
 };

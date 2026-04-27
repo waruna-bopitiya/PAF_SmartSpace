@@ -44,6 +44,7 @@ const AdminDashboard = () => {
   const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
   const [isEditingResource, setIsEditingResource] = useState(false);
   const [qrResource, setQrResource] = useState(null); // resource to show QR for
+  const [formErrors, setFormErrors] = useState([]);
 
   // Modal
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -406,13 +407,131 @@ const AdminDashboard = () => {
     }
   };
 
+  // Handle Date Time Input Validation
+  const handleDateChange = (field, value, isWeekendField) => {
+    if (!value) {
+      setResourceForm({ ...resourceForm, [field]: value });
+      return;
+    }
+
+    const selectedDate = new Date(value);
+    const day = selectedDate.getDay();
+
+    if (isWeekendField) {
+      if (day >= 1 && day <= 5) {
+        alert("❌ Invalid selection: You selected a weekday! Weekend times must fall on Saturday or Sunday.");
+        return;
+      }
+    } else {
+      if (day === 0 || day === 6) {
+        alert("❌ Invalid selection: You selected a weekend! Weekday times must fall on Monday through Friday.");
+        return;
+      }
+    }
+
+    // Time progression inline check
+    const getTime = (dateStr) => {
+      if (!dateStr) return null;
+      return dateStr.includes('T') ? dateStr.split('T')[1].substring(0, 5) : dateStr.substring(0, 5);
+    };
+
+    const newTime = getTime(value);
+
+    if (field === 'weekdayOpenTime' && resourceForm.weekdayCloseTime) {
+      const closeTime = getTime(resourceForm.weekdayCloseTime);
+      if (closeTime && closeTime <= newTime) {
+        alert("❌ Invalid selection: Weekday Open Time must be earlier than the Close Time.");
+        return;
+      }
+    }
+    
+    if (field === 'weekdayCloseTime' && resourceForm.weekdayOpenTime) {
+      const openTime = getTime(resourceForm.weekdayOpenTime);
+      if (openTime && newTime <= openTime) {
+        alert("❌ Invalid selection: Weekday Close Time must be later than the Open Time.");
+        return;
+      }
+    }
+
+    if (field === 'weekendOpenTime' && resourceForm.weekendCloseTime) {
+      const closeTime = getTime(resourceForm.weekendCloseTime);
+      if (closeTime && closeTime <= newTime) {
+        alert("❌ Invalid selection: Weekend Open Time must be earlier than the Close Time.");
+        return;
+      }
+    }
+    
+    if (field === 'weekendCloseTime' && resourceForm.weekendOpenTime) {
+      const openTime = getTime(resourceForm.weekendOpenTime);
+      if (openTime && newTime <= openTime) {
+        alert("❌ Invalid selection: Weekend Close Time must be later than the Open Time.");
+        return;
+      }
+    }
+
+    setResourceForm({ ...resourceForm, [field]: value });
+  };
+
+  const getMinDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+  const minDateTime = getMinDateTime();
+
   // Handle Add/Update Resource
   const handleSaveResource = async (e) => {
     e.preventDefault();
-    if (!resourceForm.name || !resourceForm.type || !resourceForm.location || resourceForm.capacity === '') {
-      alert('❌ Missing required fields: Name, Type, Location, and Capacity');
+    const errors = [];
+
+    if (!resourceForm.name?.trim()) errors.push('Resource Name is required.');
+    if (!resourceForm.type) errors.push('Type is required.');
+    if (!resourceForm.location?.trim()) errors.push('Location is required.');
+    
+    if (resourceForm.capacity === '' || resourceForm.capacity === null) {
+      errors.push('Capacity is required.');
+    } else {
+      const cap = parseInt(resourceForm.capacity, 10);
+      if (isNaN(cap) || cap <= 0) {
+        errors.push('Capacity must be a positive integer greater than 0.');
+      }
+    }
+
+    const getTimeVal = (dateStr) => {
+      if (!dateStr) return null;
+      if (dateStr.includes('T')) {
+        return dateStr.split('T')[1].substring(0, 5);
+      }
+      return dateStr.substring(0, 5);
+    };
+
+    const wdOpen = getTimeVal(resourceForm.weekdayOpenTime);
+    const wdClose = getTimeVal(resourceForm.weekdayCloseTime);
+
+    if (wdOpen || wdClose) {
+      if (!wdOpen) errors.push('Weekday Open Time is required if Close Time is set.');
+      if (!wdClose) errors.push('Weekday Close Time is required if Open Time is set.');
+      if (wdOpen && wdClose && wdClose <= wdOpen) {
+        errors.push('Weekday Close Time must be after Weekday Open Time.');
+      }
+    }
+
+    const weOpen = getTimeVal(resourceForm.weekendOpenTime);
+    const weClose = getTimeVal(resourceForm.weekendCloseTime);
+
+    if (weOpen || weClose) {
+      if (!weOpen) errors.push('Weekend Open Time is required if Close Time is set.');
+      if (!weClose) errors.push('Weekend Close Time is required if Open Time is set.');
+      if (weOpen && weClose && weClose <= weOpen) {
+        errors.push('Weekend Close Time must be after Weekend Open Time.');
+      }
+    }
+
+    if (errors.length > 0) {
+      setFormErrors(errors);
       return;
     }
+    setFormErrors([]);
 
     try {
       const formData = {
@@ -461,6 +580,7 @@ const AdminDashboard = () => {
       }
       setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
       setIsEditingResource(false);
+      setFormErrors([]);
     } catch (error) {
       console.error('Error saving resource:', error);
       const errorMsg = error.response?.data?.errors ? Object.entries(error.response.data.errors).map(([k, v]) => `${k}: ${v}`).join(', ') : (error.response?.data?.message || error.message);
@@ -472,6 +592,7 @@ const AdminDashboard = () => {
   const handleEditResource = (resource) => {
     setResourceForm(resource);
     setIsEditingResource(true);
+    setFormErrors([]);
   };
 
   // Handle Delete Resource
@@ -487,6 +608,33 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error deleting resource:', error);
       alert('Failed to delete resource: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // Handle Toggle Resource Status
+  const handleToggleResourceStatus = async (resource) => {
+    const id = resource.id || resource._id;
+    const currentStatus = resource.status;
+    const newStatus = currentStatus === 'ACTIVE' ? 'MAINTENANCE' : 'ACTIVE';
+    
+    if (!window.confirm(`Are you sure you want to change status to ${newStatus}?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await resourceAPI.updateStatus(id, newStatus);
+      
+      setResources(prev => prev.map(r => 
+        (r._id || r.id) === id ? { ...r, status: newStatus } : r
+      ));
+      
+      alert(`✅ Resource status changed to ${newStatus}`);
+    } catch (error) {
+      console.error('Error toggling status:', error);
+      alert('❌ Failed to update status: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -931,6 +1079,13 @@ const AdminDashboard = () => {
 
             <div className="admin-form">
               <h3>{isEditingResource ? 'Edit Resource' : 'Add New Resource'}</h3>
+              {formErrors.length > 0 && (
+                <div className="form-errors" style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '10px', borderRadius: '4px', marginBottom: '15px' }}>
+                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                    {formErrors.map((err, i) => <li key={i}>{err}</li>)}
+                  </ul>
+                </div>
+              )}
               <form onSubmit={handleSaveResource}>
                 <div className="form-row">
                   <div className="form-group">
@@ -1003,16 +1158,18 @@ const AdminDashboard = () => {
                     <label>Weekday Open Time</label>
                     <input
                       type="datetime-local"
+                      min={minDateTime}
                       value={resourceForm.weekdayOpenTime || ''}
-                      onChange={(e) => setResourceForm({ ...resourceForm, weekdayOpenTime: e.target.value })}
+                      onChange={(e) => handleDateChange('weekdayOpenTime', e.target.value, false)}
                     />
                   </div>
                   <div className="form-group">
                     <label>Weekday Close Time</label>
                     <input
                       type="datetime-local"
+                      min={minDateTime}
                       value={resourceForm.weekdayCloseTime || ''}
-                      onChange={(e) => setResourceForm({ ...resourceForm, weekdayCloseTime: e.target.value })}
+                      onChange={(e) => handleDateChange('weekdayCloseTime', e.target.value, false)}
                     />
                   </div>
                 </div>
@@ -1021,16 +1178,18 @@ const AdminDashboard = () => {
                     <label>Weekend Open Time</label>
                     <input
                       type="datetime-local"
+                      min={minDateTime}
                       value={resourceForm.weekendOpenTime || ''}
-                      onChange={(e) => setResourceForm({ ...resourceForm, weekendOpenTime: e.target.value })}
+                      onChange={(e) => handleDateChange('weekendOpenTime', e.target.value, true)}
                     />
                   </div>
                   <div className="form-group">
                     <label>Weekend Close Time</label>
                     <input
                       type="datetime-local"
+                      min={minDateTime}
                       value={resourceForm.weekendCloseTime || ''}
-                      onChange={(e) => setResourceForm({ ...resourceForm, weekendCloseTime: e.target.value })}
+                      onChange={(e) => handleDateChange('weekendCloseTime', e.target.value, true)}
                     />
                   </div>
                 </div>
@@ -1045,6 +1204,7 @@ const AdminDashboard = () => {
                       onClick={() => {
                         setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
                         setIsEditingResource(false);
+                        setFormErrors([]);
                       }}
                     >
                       Cancel
@@ -1095,6 +1255,13 @@ const AdminDashboard = () => {
                         <td><span className={`status ${resource.status?.toLowerCase()}`}>{resource.status}</span></td>
                         <td>
                           <button className="btn-small btn-primary" onClick={() => handleEditResource(resource)}>Edit</button>
+                          <button 
+                            className={`btn-small ${resource.status === 'ACTIVE' ? 'btn-warning' : 'btn-success'}`}
+                            onClick={() => handleToggleResourceStatus(resource)}
+                            disabled={loading}
+                          >
+                            {resource.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                          </button>
                           <button className="btn-small btn-danger" onClick={() => handleDeleteResource(resource.id)}>Delete</button>
                           <button className="btn-small btn-qr" onClick={() => setQrResource(resource)} title="Print QR Code for this resource">🖨️ Print QR</button>
                         </td>
