@@ -88,6 +88,7 @@ public class TicketService {
      * Create new ticket
      */
     public Ticket createTicket(Ticket ticket) {
+        ticket.onCreate();
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setLastResponseAt(LocalDateTime.now());
         Ticket savedTicket = ticketRepository.save(ticket);

@@ -53,6 +53,7 @@ D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\dto\
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\repository\NotificationRepository.java
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\model\BookingComment.java
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\repository\BookingCommentRepository.java
+D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\config\StaticResourceConfig.java
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\model\ResourceType.java
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\model\TicketComment.java
 D:\projects\smartspace\PAF_SmartSpace\backend\src\main\java\com\smartcampus\dto\LoginRequest.java

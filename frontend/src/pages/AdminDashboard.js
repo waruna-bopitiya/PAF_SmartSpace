@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { userAPI, bookingAPI, ticketAPI, resourceAPI, notificationAPI } from '../services/api';
+import { userAPI, bookingAPI, ticketAPI, resourceAPI, notificationAPI, API_BASE_URL } from '../services/api';
 import ResourceQRPrint from './ResourceQRPrint';
 import { RESOURCE_TYPES, formatResourceType } from '../config/resourceTypes';
 import '../styles/AdminDashboard.css';
@@ -11,6 +11,14 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
+
+  // Resolve a userId to a display name using the already-loaded users list
+  const getUserName = (userId) => {
+    if (!userId) return 'Unknown';
+    const found = users.find(u => u.id === userId || u._id === userId);
+    if (found) return found.fullName || found.email || userId;
+    return userId;
+  };
 
   const formatTime = (dateString) => {
     if (!dateString) return '';
@@ -38,6 +46,7 @@ const AdminDashboard = () => {
   const [ticketComments, setTicketComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
+  const [ticketAttachments, setTicketAttachments] = useState([]);
   const [ticketAssignments, setTicketAssignments] = useState({});
   // Resources Management
   const [resources, setResources] = useState([]);
@@ -359,6 +368,20 @@ const AdminDashboard = () => {
       ]);
       setTicketDetails(ticketRes.data);
       setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+
+      // Load attachments if any
+      if (ticketRes.data?.attachmentIds?.length > 0) {
+        try {
+          const attRes = await ticketAPI.getAttachments(ticketId);
+          setTicketAttachments(Array.isArray(attRes.data) ? attRes.data : []);
+        } catch (e) {
+          console.error('Could not load attachments:', e);
+          setTicketAttachments([]);
+        }
+      } else {
+        setTicketAttachments([]);
+      }
+
       setShowTicketDetails(true);
     } catch (err) {
       console.error(err);
@@ -971,26 +994,58 @@ const AdminDashboard = () => {
 
         {/* Tickets Tab */}
         {activeTab === 'tickets' && (
-          <div className="admin-section">
-            <h2>Ticket Management & Approval</h2>
-
-            <div className="filter-group">
-              <label>Filter by Status:</label>
-              <select value={ticketFilter} onChange={(e) => setTicketFilter(e.target.value)}>
-                <option value="ALL">All</option>
-                <option value="OPEN">Open</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="CLOSED">Closed</option>
-              </select>
+          <div className="tkt-section">
+            {/* Header */}
+            <div className="tkt-header">
+              <div className="tkt-header-left">
+                <div className="tkt-header-icon">🎫</div>
+                <div>
+                  <h2 className="tkt-title">Ticket Management</h2>
+                  <p className="tkt-subtitle">Review, assign and resolve support tickets</p>
+                </div>
+              </div>
+              <div className="tkt-header-stats">
+                <div className="tkt-stat">
+                  <span className="tkt-stat-value">{tickets.length}</span>
+                  <span className="tkt-stat-label">Total</span>
+                </div>
+                <div className="tkt-stat tkt-stat-open">
+                  <span className="tkt-stat-value">{tickets.filter(t => t.status === 'OPEN').length}</span>
+                  <span className="tkt-stat-label">Open</span>
+                </div>
+                <div className="tkt-stat tkt-stat-progress">
+                  <span className="tkt-stat-value">{tickets.filter(t => t.status === 'IN_PROGRESS').length}</span>
+                  <span className="tkt-stat-label">In Progress</span>
+                </div>
+                <div className="tkt-stat tkt-stat-closed">
+                  <span className="tkt-stat-value">{tickets.filter(t => t.status === 'CLOSED').length}</span>
+                  <span className="tkt-stat-label">Closed</span>
+                </div>
+              </div>
             </div>
 
-            <div className="filter-group" style={{ marginTop: '8px' }}>
-              <label>Available Technicians:</label>
-              <span style={{ fontWeight: 600 }}>{technicians.length}</span>
+            {/* Toolbar */}
+            <div className="tkt-toolbar">
+              <div className="tkt-filter-group">
+                <span className="tkt-filter-icon">⚙️</span>
+                <label className="tkt-filter-label">Status</label>
+                <select className="tkt-filter-select" value={ticketFilter} onChange={(e) => setTicketFilter(e.target.value)}>
+                  <option value="ALL">All Tickets</option>
+                  <option value="OPEN">Open</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="CLOSED">Closed</option>
+                </select>
+              </div>
+              <div className="tkt-tech-badge">
+                <span className="tkt-tech-dot"></span>
+                <span className="tkt-tech-count">{technicians.length}</span>
+                <span className="tkt-tech-text">Technician{technicians.length !== 1 ? 's' : ''} Available</span>
+              </div>
             </div>
 
-            <div className="admin-table">
-              <table>
+            {/* Table */}
+            <div className="tkt-table-wrap">
+              <table className="tkt-table">
                 <thead>
                   <tr>
                     <th>Ticket ID</th>
@@ -1004,24 +1059,42 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {tickets.length > 0 ? (
+                  {tickets.filter(t => ticketFilter === 'ALL' || t.status === ticketFilter).length > 0 ? (
                     tickets
                       .filter(t => ticketFilter === 'ALL' || t.status === ticketFilter)
+                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                       .map(ticket => (
-                        <tr key={ticket.id}>
-                          <td>{ticket.id?.substring(0, 8)}...</td>
-                          <td>{ticket.title}</td>
-                          <td>{ticket.category}</td>
-                          <td><span className={`priority ${ticket.priority?.toLowerCase()}`}>{ticket.priority}</span></td>
-                          <td><span className={`status ${ticket.status?.toLowerCase()}`}>{ticket.status}</span></td>
-                          <td>{ticket.createdBy}</td>
+                        <tr key={ticket.id || ticket._id} className="tkt-row">
+                          <td>
+                            <span className="tkt-id-chip">#{ticket.id?.substring(0, 8)}</span>
+                          </td>
+                          <td className="tkt-title-cell">{ticket.title}</td>
+                          <td>
+                            <span className="tkt-category-tag">{ticket.category}</span>
+                          </td>
+                          <td>
+                            <span className={`tkt-priority tkt-priority-${ticket.priority?.toLowerCase()}`}>
+                              {ticket.priority === 'HIGH' ? '🔴' : ticket.priority === 'MEDIUM' ? '🟡' : '🟢'} {ticket.priority}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`tkt-status tkt-status-${ticket.status?.toLowerCase().replace('_', '-')}`}>
+                              {ticket.status === 'OPEN' ? '● Open' : ticket.status === 'IN_PROGRESS' ? '◑ In Progress' : '✓ Closed'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="tkt-user-cell">
+                              <div className="tkt-user-avatar">{getUserName(ticket.createdBy)?.[0]?.toUpperCase() || '?'}</div>
+                              <span className="tkt-user-name">{getUserName(ticket.createdBy)}</span>
+                            </div>
+                          </td>
                           <td>
                             {ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS' ? (
-                              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                              <div className="tkt-assign-group">
                                 <select
+                                  className="tkt-assign-select"
                                   value={ticketAssignments[ticket.id] || ticket.assignedTo || ''}
                                   onChange={(e) => setTicketAssignments({ ...ticketAssignments, [ticket.id]: e.target.value })}
-                                  style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
                                 >
                                   <option value="">Select Technician</option>
                                   {technicians.map(tech => (
@@ -1029,48 +1102,59 @@ const AdminDashboard = () => {
                                   ))}
                                 </select>
                                 <button
-                                  className="btn-small btn-primary"
+                                  className="tkt-btn tkt-btn-assign"
                                   onClick={() => handleAssignTicket(ticket)}
                                   disabled={!ticketAssignments[ticket.id] && !ticket.assignedTo}
                                 >
-                                  Assign
+                                  ✓ Assign
                                 </button>
                               </div>
                             ) : (
-                              ticket.assignedTechnicianName || ticket.assignedTo || 'Unassigned'
+                              <span className="tkt-assigned-name">
+                                {ticket.assignedTechnicianName || ticket.assignedTo || '—'}
+                              </span>
                             )}
                           </td>
                           <td>
-                            <button className="btn-small btn-primary" onClick={() => handleViewTicketDetails(ticket)} style={{ marginRight: '8px' }}>View</button>
-                            {ticket.status === 'OPEN' ? (
-                              <>
-                                <button
-                                  className="btn-small btn-success"
-                                  onClick={() => handleApproveTicket(ticket)}
-                                >
-                                  Approve
+                            <div className="tkt-actions">
+                              <button className="tkt-btn tkt-btn-view" onClick={() => handleViewTicketDetails(ticket)}>
+                                👁 View
+                              </button>
+                              {ticket.status === 'OPEN' ? (
+                                <>
+                                  <button className="tkt-btn tkt-btn-approve" onClick={() => handleApproveTicket(ticket)}>
+                                    ✓ Approve
+                                  </button>
+                                  <button className="tkt-btn tkt-btn-reject" onClick={() => handleRejectTicket(ticket)}>
+                                    ✕ Reject
+                                  </button>
+                                </>
+                              ) : (
+                                <button className="tkt-btn tkt-btn-delete" onClick={() => handleDeleteTicket(ticket.id)}>
+                                  🗑 Delete
                                 </button>
-                                <button
-                                  className="btn-small btn-danger"
-                                  onClick={() => handleRejectTicket(ticket)}
-                                >
-                                  Reject
-                                </button>
-                              </>
-                            ) : (
-                              <button className="btn-small btn-danger" onClick={() => handleDeleteTicket(ticket.id)}>Delete</button>
-                            )}
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
                   ) : (
-                    <tr><td colSpan="8" className="text-center">No tickets found</td></tr>
+                    <tr>
+                      <td colSpan="8">
+                        <div className="tkt-empty">
+                          <div className="tkt-empty-icon">🎫</div>
+                          <p className="tkt-empty-title">No tickets found</p>
+                          <p className="tkt-empty-sub">Try changing the status filter above</p>
+                        </div>
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
             </div>
           </div>
         )}
+
 
         {/* Resources Tab */}
         {activeTab === 'resources' && (
@@ -1440,6 +1524,34 @@ const AdminDashboard = () => {
                 <label style={{ fontWeight: 'bold' }}>Description</label>
                 <p className="description-text">{ticketDetails.description}</p>
               </div>
+
+              {/* Attached Images */}
+              {ticketAttachments.length > 0 && (
+                <div className="detail-section" style={{ marginBottom: '15px' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
+                    🖼 Attached Images ({ticketAttachments.length})
+                  </label>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    {ticketAttachments.map((att) => {
+                      return (
+                        <div key={att.id} style={{ textAlign: 'center' }}>
+                          <img
+                            src={att.fileData ? `data:${att.fileType || 'image/jpeg'};base64,${att.fileData}` : `${API_BASE_URL}${att.fileUrl}`}
+                            alt={att.fileName}
+                            style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}
+                            onClick={() => {
+                              const newTab = window.open();
+                              newTab.document.body.innerHTML = `<img src="${att.fileData ? `data:${att.fileType || 'image/jpeg'};base64,${att.fileData}` : `${API_BASE_URL}${att.fileUrl}`}" style="max-width: 100%;">`;
+                            }}
+                            title={att.fileName}
+                          />
+                          <div style={{ fontSize: '0.75em', color: '#666', marginTop: '4px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.fileName}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="detail-section" style={{ marginTop: '20px' }}>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Comments ({ticketComments.length})</label>
