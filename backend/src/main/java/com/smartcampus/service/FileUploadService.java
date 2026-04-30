@@ -41,29 +41,15 @@ public class FileUploadService {
 
     validateFile(file);
 
-    // Create upload directory if not exists
-    Path uploadPath = Paths.get(UPLOAD_DIR);
-    Files.createDirectories(uploadPath);
-
-    // Generate unique filename
-    String originalFilename = file.getOriginalFilename();
-    String fileExtension = getFileExtension(originalFilename);
-    String filename = UUID.randomUUID().toString() + "." + fileExtension;
-    Path filePath = uploadPath.resolve(filename);
-
-    // Save file to disk
-    Files.write(filePath, file.getBytes());
-    log.info("File uploaded successfully: " + filename);
-
     // Create attachment metadata
     TicketAttachment attachment = new TicketAttachment();
     attachment.setTicketId(ticketId);
-    attachment.setFileName(originalFilename);
-    attachment.setFileUrl("/uploads/ticket-attachments/" + filename);
+    attachment.setFileName(file.getOriginalFilename());
     attachment.setFileType(file.getContentType());
     attachment.setFileSize(file.getSize());
     attachment.setUploadedBy(uploadedBy);
     attachment.setUploadedAt(LocalDateTime.now());
+    attachment.setFileData(file.getBytes());
 
     return attachmentRepository.save(attachment);
   }
@@ -74,16 +60,6 @@ public class FileUploadService {
   public void deleteFile(String attachmentId) throws IOException {
     TicketAttachment attachment = attachmentRepository.findById(attachmentId)
         .orElseThrow(() -> new ResourceNotFoundException("Attachment not found"));
-
-    // Extract filename from URL
-    String filename = attachment.getFileUrl().substring(attachment.getFileUrl().lastIndexOf("/") + 1);
-    Path filePath = Paths.get(UPLOAD_DIR, filename);
-
-    // Delete file from disk
-    if (Files.exists(filePath)) {
-      Files.delete(filePath);
-      log.info("File deleted: " + filename);
-    }
 
     // Delete metadata
     attachmentRepository.deleteById(attachmentId);

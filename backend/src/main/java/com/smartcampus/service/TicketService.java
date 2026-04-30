@@ -4,6 +4,7 @@ import com.smartcampus.exception.ResourceNotFoundException;
 import com.smartcampus.model.*;
 import com.smartcampus.repository.TicketCommentRepository;
 import com.smartcampus.repository.TicketRepository;
+import com.smartcampus.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,9 @@ public class TicketService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * Get all tickets with pagination
@@ -84,9 +88,25 @@ public class TicketService {
      * Create new ticket
      */
     public Ticket createTicket(Ticket ticket) {
+        ticket.onCreate();
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setLastResponseAt(LocalDateTime.now());
-        return ticketRepository.save(ticket);
+        Ticket savedTicket = ticketRepository.save(ticket);
+        
+        // Notify Admins
+        List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+        for (User admin : admins) {
+            notificationService.createNotification(
+                    admin.getId(),
+                    savedTicket.getId(),
+                    "Ticket",
+                    NotificationType.SYSTEM_ALERT,
+                    "New Ticket Created",
+                    "A new ticket has been submitted: " + savedTicket.getTitle()
+            );
+        }
+        
+        return savedTicket;
     }
 
     /**
@@ -125,6 +145,16 @@ public class TicketService {
                 NotificationType.TICKET_ASSIGNED,
                 "Your ticket has been assigned",
                 "A technician has been assigned to your ticket"
+        );
+        
+        // Send notification to the assigned technician
+        notificationService.createNotification(
+                technicianId,
+                ticket.getId(),
+                "Ticket",
+                NotificationType.TICKET_ASSIGNED,
+                "New Ticket Assigned",
+                "You have been assigned to a new ticket: " + ticket.getTitle()
         );
         
         return savedTicket;
@@ -200,7 +230,7 @@ public class TicketService {
         ticket.onUpdate();
         ticketRepository.save(ticket);
         
-        // Send notification to other users
+        // Send notification to ticket creator
         if (!userId.equals(ticket.getCreatedBy())) {
             notificationService.createNotification(
                     ticket.getCreatedBy(),
@@ -208,6 +238,18 @@ public class TicketService {
                     "Ticket",
                     NotificationType.NEW_COMMENT_ON_MY_TICKET,
                     "New comment on your ticket",
+                    userName + " added a comment"
+            );
+        }
+        
+        // Send notification to assigned technician
+        if (ticket.getAssignedTo() != null && !userId.equals(ticket.getAssignedTo())) {
+            notificationService.createNotification(
+                    ticket.getAssignedTo(),
+                    ticket.getId(),
+                    "Ticket",
+                    NotificationType.TICKET_COMMENTED,
+                    "New comment on assigned ticket",
                     userName + " added a comment"
             );
         }
@@ -220,6 +262,27 @@ public class TicketService {
      */
     public List<TicketComment> getTicketComments(String ticketId) {
         return ticketCommentRepository.findByTicketId(ticketId);
+    }
+
+    /**
+     * Delete comment from ticket
+     */
+    public void deleteComment(String ticketId, String commentId, String userId) {
+        Ticket ticket = getTicketById(ticketId);
+        TicketComment comment = ticketCommentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
+                
+        if (!comment.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Only the author can delete this comment");
+        }
+        
+        ticketCommentRepository.delete(comment);
+        
+        if (ticket.getCommentIds() != null) {
+            ticket.getCommentIds().remove(commentId);
+            ticket.onUpdate();
+            ticketRepository.save(ticket);
+        }
     }
 
     /**

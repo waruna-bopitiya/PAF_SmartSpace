@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { userAPI, bookingAPI, ticketAPI, resourceAPI } from '../services/api';
+import { userAPI, bookingAPI, ticketAPI, resourceAPI, notificationAPI, API_BASE_URL } from '../services/api';
 import ResourceQRPrint from './ResourceQRPrint';
 import { RESOURCE_TYPES, formatResourceType } from '../config/resourceTypes';
 import '../styles/AdminDashboard.css';
@@ -9,29 +9,55 @@ import '../styles/AdminDashboard.css';
 const AdminDashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
-  
+
+  // Resolve a userId to a display name using the already-loaded users list
+  const getUserName = (userId) => {
+    if (!userId) return 'Unknown';
+    const found = users.find(u => u.id === userId || u._id === userId);
+    if (found) return found.fullName || found.email || userId;
+    return userId;
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return dateString;
+    }
+  };
+
   // Users Management
   const [users, setUsers] = useState([]);
   const [userForm, setUserForm] = useState({ email: '', password: '', fullName: '', role: 'USER' });
-  
+
   // Bookings Management
   const [bookings, setBookings] = useState([]);
   const [bookingFilter, setBookingFilter] = useState('PENDING');
-  
+
   // Tickets Management
   const [tickets, setTickets] = useState([]);
   const [ticketFilter, setTicketFilter] = useState('OPEN');
-  
+  const [ticketDetails, setTicketDetails] = useState(null);
+  const [showTicketDetails, setShowTicketDetails] = useState(false);
+  const [ticketComments, setTicketComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [ticketAttachments, setTicketAttachments] = useState([]);
+  const [ticketAssignments, setTicketAssignments] = useState({});
   // Resources Management
   const [resources, setResources] = useState([]);
-  const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
+  const [resourceForm, setResourceForm] = useState({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
   const [isEditingResource, setIsEditingResource] = useState(false);
   const [qrResource, setQrResource] = useState(null); // resource to show QR for
-  
+  const [formErrors, setFormErrors] = useState([]);
+
   // Modal
   const [showBookingModal, setShowBookingModal] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [approvalReason, setApprovalReason] = useState('');
 
@@ -42,6 +68,10 @@ const AdminDashboard = () => {
     openTickets: 0,
     totalResources: 0,
   });
+
+  // Notifications
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   // Fetch errors
   const [fetchError, setFetchError] = useState('');
@@ -55,9 +85,10 @@ const AdminDashboard = () => {
     // ── Users (ADMIN only) ──
     try {
       const res = await userAPI.getAll();
-      const data = Array.isArray(res.data) ? res.data : [];
-      setUsers(data);
-      setStats(s => ({ ...s, totalUsers: data.length }));
+      const data = res.data?.content || res.data || [];
+      const arr = Array.isArray(data) ? data : [];
+      setUsers(arr);
+      setStats(s => ({ ...s, totalUsers: arr.length }));
     } catch (e) {
       console.error('Users fetch error:', e.response?.status, e.response?.data || e.message);
       errors.push(`Users: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
@@ -98,11 +129,26 @@ const AdminDashboard = () => {
       errors.push(`Resources: ${e.response?.status || ''} ${e.response?.data?.message || e.message}`);
     }
 
+    // ── Notifications ──
+    if (user?.id || user?.email) {
+      try {
+        const userId = user.id || user.email;
+        const [notifRes, unreadRes] = await Promise.all([
+          notificationAPI.getAll(userId, 0, 20),
+          notificationAPI.getUnreadCount(userId)
+        ]);
+        setNotifications(notifRes.data?.content || notifRes.data || []);
+        setUnreadNotificationsCount(unreadRes.data?.unreadCount || 0);
+      } catch (e) {
+        console.error('Notifications fetch error:', e);
+      }
+    }
+
     if (errors.length > 0) {
       setFetchError(`Some data could not be loaded — ${errors.join(' | ')}`);
     }
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchData();
@@ -123,15 +169,15 @@ const AdminDashboard = () => {
   const hasBookingConflict = (newBooking, existingBookings) => {
     return existingBookings.some(booking => {
       if (booking.id === newBooking.id || booking.status === 'REJECTED') return false;
-      
+
       const newStart = new Date(newBooking.startTime || newBooking.startDateTime);
       const newEnd = new Date(newBooking.endTime || newBooking.endDateTime);
       const existStart = new Date(booking.startTime || booking.startDateTime);
       const existEnd = new Date(booking.endTime || booking.endDateTime);
-      
+
       // Check if same resource and overlapping time
       return booking.resourceId === newBooking.resourceId &&
-             !(newEnd <= existStart || newStart >= existEnd);
+        !(newEnd <= existStart || newStart >= existEnd);
     });
   };
 
@@ -182,7 +228,7 @@ const AdminDashboard = () => {
         approvalReason,
         user?.id || user?.email || 'admin'
       );
-      setBookings(bookings.map(b => 
+      setBookings(bookings.map(b =>
         b.id === booking.id ? { ...b, status: 'APPROVED', approvalReason: approvalReason } : b
       ));
       setShowBookingModal(false);
@@ -195,6 +241,7 @@ const AdminDashboard = () => {
   };
 
   // Handle Reject Booking
+  // eslint-disable-next-line no-unused-vars
   const handleRejectBooking = async (booking) => {
     if (!window.confirm('Are you sure you want to reject this booking?')) return;
 
@@ -205,7 +252,7 @@ const AdminDashboard = () => {
 
     try {
       await bookingAPI.reject(booking.id, approvalReason.trim());
-      setBookings(bookings.map(b => 
+      setBookings(bookings.map(b =>
         b.id === booking.id ? { ...b, status: 'REJECTED', rejectionReason: approvalReason } : b
       ));
       setApprovalReason('');
@@ -234,7 +281,7 @@ const AdminDashboard = () => {
         await bookingAPI.update(bookingId, { status: newStatus });
       }
 
-      setBookings(bookings.map(b => 
+      setBookings(bookings.map(b =>
         b.id === bookingId ? { ...b, status: newStatus } : b
       ));
       console.log(`Booking ${bookingId} status updated to ${newStatus}`);
@@ -247,7 +294,7 @@ const AdminDashboard = () => {
   // Handle Approve Ticket
   const handleApproveTicket = async (ticket) => {
     try {
-      setTickets(tickets.map(t => 
+      setTickets(tickets.map(t =>
         t.id === ticket.id ? { ...t, status: 'IN_PROGRESS' } : t
       ));
       alert('✅ Ticket approved and assigned');
@@ -262,7 +309,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to reject this ticket?')) return;
 
     try {
-      setTickets(tickets.map(t => 
+      setTickets(tickets.map(t =>
         t.id === ticket.id ? { ...t, status: 'CLOSED' } : t
       ));
       alert('Ticket rejected and closed');
@@ -272,13 +319,202 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleViewTicketDetails = async (ticket) => {
+    try {
+      const ticketId = ticket._id || ticket.id;
+      const [ticketRes, commentsRes] = await Promise.all([
+        ticketAPI.getById(ticketId),
+        ticketAPI.getComments(ticketId),
+      ]);
+      setTicketDetails(ticketRes.data);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+
+      // Load attachments if any
+      if (ticketRes.data?.attachmentIds?.length > 0) {
+        try {
+          const attRes = await ticketAPI.getAttachments(ticketId);
+          setTicketAttachments(Array.isArray(attRes.data) ? attRes.data : []);
+        } catch (e) {
+          console.error('Could not load attachments:', e);
+          setTicketAttachments([]);
+        }
+      } else {
+        setTicketAttachments([]);
+      }
+
+      setShowTicketDetails(true);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to load ticket details');
+    }
+  };
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || !ticketDetails) return;
+
+    try {
+      setCommentLoading(true);
+      const ticketId = ticketDetails.id || ticketDetails._id;
+
+      const payload = {
+        userId: user?.id,
+        userName: user?.fullName || user?.email || 'Admin',
+        userEmail: user?.email,
+        content: newComment,
+        staffComment: true
+      };
+
+      await ticketAPI.addComment(ticketId, payload);
+      const commentsRes = await ticketAPI.getComments(ticketId);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+      setNewComment('');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to add comment');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    try {
+      const ticketId = ticketDetails.id || ticketDetails._id;
+      await ticketAPI.deleteComment(ticketId, commentId, user?.id);
+      const commentsRes = await ticketAPI.getComments(ticketId);
+      setTicketComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
+    } catch (error) {
+      console.error(error);
+      alert('Failed to delete comment');
+    }
+  };
+
+  // Handle Date Time Input Validation
+  const handleDateChange = (field, value, isWeekendField) => {
+    if (!value) {
+      setResourceForm({ ...resourceForm, [field]: value });
+      return;
+    }
+
+    const selectedDate = new Date(value);
+    const day = selectedDate.getDay();
+
+    if (isWeekendField) {
+      if (day >= 1 && day <= 5) {
+        alert("❌ Invalid selection: You selected a weekday! Weekend times must fall on Saturday or Sunday.");
+        return;
+      }
+    } else {
+      if (day === 0 || day === 6) {
+        alert("❌ Invalid selection: You selected a weekend! Weekday times must fall on Monday through Friday.");
+        return;
+      }
+    }
+
+    // Time progression inline check
+    const getTime = (dateStr) => {
+      if (!dateStr) return null;
+      return dateStr.includes('T') ? dateStr.split('T')[1].substring(0, 5) : dateStr.substring(0, 5);
+    };
+
+    const newTime = getTime(value);
+
+    if (field === 'weekdayOpenTime' && resourceForm.weekdayCloseTime) {
+      const closeTime = getTime(resourceForm.weekdayCloseTime);
+      if (closeTime && closeTime <= newTime) {
+        alert("❌ Invalid selection: Weekday Open Time must be earlier than the Close Time.");
+        return;
+      }
+    }
+    
+    if (field === 'weekdayCloseTime' && resourceForm.weekdayOpenTime) {
+      const openTime = getTime(resourceForm.weekdayOpenTime);
+      if (openTime && newTime <= openTime) {
+        alert("❌ Invalid selection: Weekday Close Time must be later than the Open Time.");
+        return;
+      }
+    }
+
+    if (field === 'weekendOpenTime' && resourceForm.weekendCloseTime) {
+      const closeTime = getTime(resourceForm.weekendCloseTime);
+      if (closeTime && closeTime <= newTime) {
+        alert("❌ Invalid selection: Weekend Open Time must be earlier than the Close Time.");
+        return;
+      }
+    }
+    
+    if (field === 'weekendCloseTime' && resourceForm.weekendOpenTime) {
+      const openTime = getTime(resourceForm.weekendOpenTime);
+      if (openTime && newTime <= openTime) {
+        alert("❌ Invalid selection: Weekend Close Time must be later than the Open Time.");
+        return;
+      }
+    }
+
+    setResourceForm({ ...resourceForm, [field]: value });
+  };
+
+  const getMinDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+  const minDateTime = getMinDateTime();
+
   // Handle Add/Update Resource
   const handleSaveResource = async (e) => {
     e.preventDefault();
-    if (!resourceForm.name || !resourceForm.type || !resourceForm.location || resourceForm.capacity === '') {
-      alert('❌ Missing required fields: Name, Type, Location, and Capacity');
+    const errors = [];
+
+    if (!resourceForm.name?.trim()) errors.push('Resource Name is required.');
+    if (!resourceForm.type) errors.push('Type is required.');
+    if (!resourceForm.location?.trim()) errors.push('Location is required.');
+    
+    if (resourceForm.capacity === '' || resourceForm.capacity === null) {
+      errors.push('Capacity is required.');
+    } else {
+      const cap = parseInt(resourceForm.capacity, 10);
+      if (isNaN(cap) || cap <= 0) {
+        errors.push('Capacity must be a positive integer greater than 0.');
+      }
+    }
+
+    const getTimeVal = (dateStr) => {
+      if (!dateStr) return null;
+      if (dateStr.includes('T')) {
+        return dateStr.split('T')[1].substring(0, 5);
+      }
+      return dateStr.substring(0, 5);
+    };
+
+    const wdOpen = getTimeVal(resourceForm.weekdayOpenTime);
+    const wdClose = getTimeVal(resourceForm.weekdayCloseTime);
+
+    if (wdOpen || wdClose) {
+      if (!wdOpen) errors.push('Weekday Open Time is required if Close Time is set.');
+      if (!wdClose) errors.push('Weekday Close Time is required if Open Time is set.');
+      if (wdOpen && wdClose && wdClose <= wdOpen) {
+        errors.push('Weekday Close Time must be after Weekday Open Time.');
+      }
+    }
+
+    const weOpen = getTimeVal(resourceForm.weekendOpenTime);
+    const weClose = getTimeVal(resourceForm.weekendCloseTime);
+
+    if (weOpen || weClose) {
+      if (!weOpen) errors.push('Weekend Open Time is required if Close Time is set.');
+      if (!weClose) errors.push('Weekend Close Time is required if Open Time is set.');
+      if (weOpen && weClose && weClose <= weOpen) {
+        errors.push('Weekend Close Time must be after Weekend Open Time.');
+      }
+    }
+
+    if (errors.length > 0) {
+      setFormErrors(errors);
       return;
     }
+    setFormErrors([]);
 
     try {
       const formData = {
@@ -287,13 +523,17 @@ const AdminDashboard = () => {
         location: resourceForm.location,
         capacity: parseInt(resourceForm.capacity, 10),
         description: resourceForm.description || '',
-        status: resourceForm.status
+        status: resourceForm.status,
+        weekdayOpenTime: resourceForm.weekdayOpenTime || null,
+        weekdayCloseTime: resourceForm.weekdayCloseTime || null,
+        weekendOpenTime: resourceForm.weekendOpenTime || null,
+        weekendCloseTime: resourceForm.weekendCloseTime || null
       };
 
       if (isEditingResource) {
         // UPDATE existing resource
         const response = await resourceAPI.update(resourceForm._id || resourceForm.id, formData);
-        setResources(resources.map(r => 
+        setResources(resources.map(r =>
           (r._id || r.id) === (resourceForm._id || resourceForm.id) ? response.data : r
         ));
         alert('✅ Resource updated successfully');
@@ -306,7 +546,7 @@ const AdminDashboard = () => {
         const updatedResources = [...resources, response.data];
         console.log('Updated resources after add:', updatedResources);
         setResources(updatedResources);
-        
+
         // Also fetch fresh data from server to ensure sync
         setTimeout(async () => {
           try {
@@ -318,11 +558,12 @@ const AdminDashboard = () => {
             console.error('Error refreshing resources:', err);
           }
         }, 500);
-        
+
         alert('✅ Resource added successfully');
       }
-      setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
+      setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
       setIsEditingResource(false);
+      setFormErrors([]);
     } catch (error) {
       console.error('Error saving resource:', error);
       const errorMsg = error.response?.data?.errors ? Object.entries(error.response.data.errors).map(([k, v]) => `${k}: ${v}`).join(', ') : (error.response?.data?.message || error.message);
@@ -334,12 +575,13 @@ const AdminDashboard = () => {
   const handleEditResource = (resource) => {
     setResourceForm(resource);
     setIsEditingResource(true);
+    setFormErrors([]);
   };
 
   // Handle Delete Resource
   const handleDeleteResource = async (resourceId) => {
     if (!window.confirm('Are you sure you want to delete this resource?')) return;
-    
+
     try {
       // Use _id for MongoDB, fallback to id if needed
       const id = resourceId._id || resourceId;
@@ -352,10 +594,37 @@ const AdminDashboard = () => {
     }
   };
 
+  // Handle Toggle Resource Status
+  const handleToggleResourceStatus = async (resource) => {
+    const id = resource.id || resource._id;
+    const currentStatus = resource.status;
+    const newStatus = currentStatus === 'ACTIVE' ? 'MAINTENANCE' : 'ACTIVE';
+    
+    if (!window.confirm(`Are you sure you want to change status to ${newStatus}?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await resourceAPI.updateStatus(id, newStatus);
+      
+      setResources(prev => prev.map(r => 
+        (r._id || r.id) === id ? { ...r, status: newStatus } : r
+      ));
+      
+      alert(`✅ Resource status changed to ${newStatus}`);
+    } catch (error) {
+      console.error('Error toggling status:', error);
+      alert('❌ Failed to update status: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Handle Delete Booking
   const handleDeleteBooking = async (bookingId) => {
     if (!window.confirm('Are you sure you want to delete this booking?')) return;
-    
+
     try {
       const id = typeof bookingId === 'object' ? (bookingId?.id || bookingId?._id) : bookingId;
       if (!id) {
@@ -374,7 +643,7 @@ const AdminDashboard = () => {
   // Handle Delete Ticket
   const handleDeleteTicket = async (ticketId) => {
     if (!window.confirm('Are you sure you want to delete this ticket?')) return;
-    
+
     try {
       const id = ticketId._id || ticketId;
       await ticketAPI.delete(id);
@@ -401,37 +670,53 @@ const AdminDashboard = () => {
       {/* Top Navigation Bar */}
       <div className="admin-top-nav">
         <div className="admin-panel-title">Admin Panel</div>
-        
+
         <div className="admin-nav">
-          <button 
+          <button
             className={`admin-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
           >
             Dashboard
           </button>
-          <button 
+          <button
             className={`admin-nav-btn ${activeTab === 'users' ? 'active' : ''}`}
             onClick={() => setActiveTab('users')}
           >
             Users
           </button>
-          <button 
+          <button
             className={`admin-nav-btn ${activeTab === 'bookings' ? 'active' : ''}`}
             onClick={() => setActiveTab('bookings')}
           >
             Bookings
           </button>
-          <button 
+          <button
             className={`admin-nav-btn ${activeTab === 'tickets' ? 'active' : ''}`}
             onClick={() => setActiveTab('tickets')}
           >
             Tickets
           </button>
-          <button 
+          <button
             className={`admin-nav-btn ${activeTab === 'resources' ? 'active' : ''}`}
             onClick={() => setActiveTab('resources')}
           >
             Resources
+          </button>
+          <button
+            className={`admin-nav-btn ${activeTab === 'notifications' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('notifications');
+              if (unreadNotificationsCount > 0) {
+                // Optionally mark all as read when opening tab
+              }
+            }}
+          >
+            Notifications
+            {unreadNotificationsCount > 0 && (
+              <span className="badge-danger">
+                {unreadNotificationsCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -490,7 +775,7 @@ const AdminDashboard = () => {
         {activeTab === 'users' && (
           <div className="admin-section">
             <h2>User Management</h2>
-            
+
             <div className="admin-form">
               <h3>Create New User</h3>
               <form onSubmit={handleCreateUser}>
@@ -500,7 +785,7 @@ const AdminDashboard = () => {
                     <input
                       type="email"
                       value={userForm.email}
-                      onChange={(e) => setUserForm({...userForm, email: e.target.value})}
+                      onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                       placeholder="user@example.com"
                     />
                   </div>
@@ -509,7 +794,7 @@ const AdminDashboard = () => {
                     <input
                       type="text"
                       value={userForm.fullName}
-                      onChange={(e) => setUserForm({...userForm, fullName: e.target.value})}
+                      onChange={(e) => setUserForm({ ...userForm, fullName: e.target.value })}
                       placeholder="Full Name"
                     />
                   </div>
@@ -520,7 +805,7 @@ const AdminDashboard = () => {
                     <input
                       type="password"
                       value={userForm.password}
-                      onChange={(e) => setUserForm({...userForm, password: e.target.value})}
+                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                       placeholder="Password"
                     />
                   </div>
@@ -528,7 +813,7 @@ const AdminDashboard = () => {
                     <label>Role</label>
                     <select
                       value={userForm.role}
-                      onChange={(e) => setUserForm({...userForm, role: e.target.value})}
+                      onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
                     >
                       <option value="USER">User</option>
                       <option value="ADMIN">Admin</option>
@@ -564,7 +849,7 @@ const AdminDashboard = () => {
                         <td>{user.phoneNumber || 'N/A'}</td>
                         <td><span className={`status ${user.active ? 'active' : 'inactive'}`}>{user.active ? 'Active' : 'Inactive'}</span></td>
                         <td>
-                          <button 
+                          <button
                             className="btn btn-delete btn-sm"
                             onClick={() => handleDeleteUser(user.id)}
                           >
@@ -586,7 +871,7 @@ const AdminDashboard = () => {
         {activeTab === 'bookings' && (
           <div className="admin-section">
             <h2>Booking Management & Approval</h2>
-            
+
             <div className="filter-group">
               <label>Filter by Status:</label>
               <select value={bookingFilter} onChange={(e) => setBookingFilter(e.target.value)}>
@@ -615,49 +900,49 @@ const AdminDashboard = () => {
                     bookings
                       .filter(b => bookingFilter === 'ALL' || b.status === bookingFilter)
                       .map(booking => (
-                      <tr key={booking.id}>
-                        <td>{booking.id?.substring(0, 8)}...</td>
-                        <td>{booking.resourceId}</td>
-                        <td>{booking.userId}</td>
-                        <td>{new Date(booking.startTime || booking.startDateTime).toLocaleString()}</td>
-                        <td>{new Date(booking.endTime || booking.endDateTime).toLocaleString()}</td>
-                        <td>
-                          <select 
-                            value={booking.status}
-                            onChange={(e) => handleUpdateBookingStatus(booking.id, e.target.value)}
-                            className="status-dropdown"
-                            style={{
-                              padding: '5px 8px',
-                              borderRadius: '4px',
-                              border: '1px solid #ddd',
-                              backgroundColor: 
-                                booking.status === 'APPROVED' ? '#d4edda' :
-                                booking.status === 'PENDING' ? '#fff3cd' :
-                                booking.status === 'REJECTED' ? '#f8d7da' :
-                                '#ffffff'
-                            }}
-                          >
-                            <option value="PENDING">Pending</option>
-                            <option value="APPROVED">Approved</option>
-                            <option value="REJECTED">Rejected</option>
-                          </select>
-                        </td>
-                        <td>
-                          {booking.status === 'PENDING' ? (
-                            <>
-                              <button 
-                                className="btn-small btn-success" 
-                                onClick={() => handleUpdateBookingStatus(booking.id, 'APPROVED')}
-                              >
-                                Quick Approve
-                              </button>
-                            </>
-                          ) : (
-                            <button className="btn-small btn-danger" onClick={() => handleDeleteBooking(booking.id)}>Delete</button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                        <tr key={booking.id}>
+                          <td>{booking.id?.substring(0, 8)}...</td>
+                          <td>{booking.resourceId}</td>
+                          <td>{booking.userId}</td>
+                          <td>{new Date(booking.startTime || booking.startDateTime).toLocaleString()}</td>
+                          <td>{new Date(booking.endTime || booking.endDateTime).toLocaleString()}</td>
+                          <td>
+                            <select
+                              value={booking.status}
+                              onChange={(e) => handleUpdateBookingStatus(booking.id, e.target.value)}
+                              className="status-dropdown"
+                              style={{
+                                padding: '5px 8px',
+                                borderRadius: '4px',
+                                border: '1px solid #ddd',
+                                backgroundColor:
+                                  booking.status === 'APPROVED' ? '#d4edda' :
+                                    booking.status === 'PENDING' ? '#fff3cd' :
+                                      booking.status === 'REJECTED' ? '#f8d7da' :
+                                        '#ffffff'
+                              }}
+                            >
+                              <option value="PENDING">Pending</option>
+                              <option value="APPROVED">Approved</option>
+                              <option value="REJECTED">Rejected</option>
+                            </select>
+                          </td>
+                          <td>
+                            {booking.status === 'PENDING' ? (
+                              <>
+                                <button
+                                  className="btn-small btn-success"
+                                  onClick={() => handleUpdateBookingStatus(booking.id, 'APPROVED')}
+                                >
+                                  Quick Approve
+                                </button>
+                              </>
+                            ) : (
+                              <button className="btn-small btn-danger" onClick={() => handleDeleteBooking(booking.id)}>Delete</button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
                   ) : (
                     <tr><td colSpan="7" className="text-center">No bookings found</td></tr>
                   )}
@@ -669,20 +954,58 @@ const AdminDashboard = () => {
 
         {/* Tickets Tab */}
         {activeTab === 'tickets' && (
-          <div className="admin-section">
-            <h2>Ticket Management & Approval</h2>
-            
-            <div className="filter-group">
-              <label>Filter by Status:</label>
-              <select value={ticketFilter} onChange={(e) => setTicketFilter(e.target.value)}>
-                <option value="OPEN">Open</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="CLOSED">Closed</option>
-              </select>
+          <div className="tkt-section">
+            {/* Header */}
+            <div className="tkt-header">
+              <div className="tkt-header-left">
+                <div className="tkt-header-icon">🎫</div>
+                <div>
+                  <h2 className="tkt-title">Ticket Management</h2>
+                  <p className="tkt-subtitle">Review, assign and resolve support tickets</p>
+                </div>
+              </div>
+              <div className="tkt-header-stats">
+                <div className="tkt-stat">
+                  <span className="tkt-stat-value">{tickets.length}</span>
+                  <span className="tkt-stat-label">Total</span>
+                </div>
+                <div className="tkt-stat tkt-stat-open">
+                  <span className="tkt-stat-value">{tickets.filter(t => t.status === 'OPEN').length}</span>
+                  <span className="tkt-stat-label">Open</span>
+                </div>
+                <div className="tkt-stat tkt-stat-progress">
+                  <span className="tkt-stat-value">{tickets.filter(t => t.status === 'IN_PROGRESS').length}</span>
+                  <span className="tkt-stat-label">In Progress</span>
+                </div>
+                <div className="tkt-stat tkt-stat-closed">
+                  <span className="tkt-stat-value">{tickets.filter(t => t.status === 'CLOSED').length}</span>
+                  <span className="tkt-stat-label">Closed</span>
+                </div>
+              </div>
             </div>
 
-            <div className="admin-table">
-              <table>
+            {/* Toolbar */}
+            <div className="tkt-toolbar">
+              <div className="tkt-filter-group">
+                <span className="tkt-filter-icon">⚙️</span>
+                <label className="tkt-filter-label">Status</label>
+                <select className="tkt-filter-select" value={ticketFilter} onChange={(e) => setTicketFilter(e.target.value)}>
+                  <option value="ALL">All Tickets</option>
+                  <option value="OPEN">Open</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="CLOSED">Closed</option>
+                </select>
+              </div>
+              <div className="tkt-tech-badge">
+                <span className="tkt-tech-dot"></span>
+                <span className="tkt-tech-count">{technicians.length}</span>
+                <span className="tkt-tech-text">Technician{technicians.length !== 1 ? 's' : ''} Available</span>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="tkt-table-wrap">
+              <table className="tkt-table">
                 <thead>
                   <tr>
                     <th>Ticket ID</th>
@@ -695,41 +1018,95 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {tickets.length > 0 ? (
+                  {tickets.filter(t => ticketFilter === 'ALL' || t.status === ticketFilter).length > 0 ? (
                     tickets
                       .filter(t => ticketFilter === 'ALL' || t.status === ticketFilter)
+                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                       .map(ticket => (
-                      <tr key={ticket.id}>
-                        <td>{ticket.id?.substring(0, 8)}...</td>
-                        <td>{ticket.title}</td>
-                        <td>{ticket.category}</td>
-                        <td><span className={`priority ${ticket.priority?.toLowerCase()}`}>{ticket.priority}</span></td>
-                        <td><span className={`status ${ticket.status?.toLowerCase()}`}>{ticket.status}</span></td>
-                        <td>{ticket.createdBy}</td>
-                        <td>
-                          {ticket.status === 'OPEN' ? (
-                            <>
-                              <button 
-                                className="btn-small btn-success" 
-                                onClick={() => handleApproveTicket(ticket)}
-                              >
-                                Approve
+                        <tr key={ticket.id || ticket._id} className="tkt-row">
+                          <td>
+                            <span className="tkt-id-chip">#{ticket.id?.substring(0, 8)}</span>
+                          </td>
+                          <td className="tkt-title-cell">{ticket.title}</td>
+                          <td>
+                            <span className="tkt-category-tag">{ticket.category}</span>
+                          </td>
+                          <td>
+                            <span className={`tkt-priority tkt-priority-${ticket.priority?.toLowerCase()}`}>
+                              {ticket.priority === 'HIGH' ? '🔴' : ticket.priority === 'MEDIUM' ? '🟡' : '🟢'} {ticket.priority}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`tkt-status tkt-status-${ticket.status?.toLowerCase().replace('_', '-')}`}>
+                              {ticket.status === 'OPEN' ? '● Open' : ticket.status === 'IN_PROGRESS' ? '◑ In Progress' : '✓ Closed'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="tkt-user-cell">
+                              <div className="tkt-user-avatar">{getUserName(ticket.createdBy)?.[0]?.toUpperCase() || '?'}</div>
+                              <span className="tkt-user-name">{getUserName(ticket.createdBy)}</span>
+                            </div>
+                          </td>
+                          <td>
+                            {ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS' ? (
+                              <div className="tkt-assign-group">
+                                <select
+                                  className="tkt-assign-select"
+                                  value={ticketAssignments[ticket.id] || ticket.assignedTo || ''}
+                                  onChange={(e) => setTicketAssignments({ ...ticketAssignments, [ticket.id]: e.target.value })}
+                                >
+                                  <option value="">Select Technician</option>
+                                  {technicians.map(tech => (
+                                    <option key={tech.id} value={tech.id}>{tech.fullName || tech.email}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  className="tkt-btn tkt-btn-assign"
+                                  onClick={() => handleAssignTicket(ticket)}
+                                  disabled={!ticketAssignments[ticket.id] && !ticket.assignedTo}
+                                >
+                                  ✓ Assign
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="tkt-assigned-name">
+                                {ticket.assignedTechnicianName || ticket.assignedTo || '—'}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <div className="tkt-actions">
+                              <button className="tkt-btn tkt-btn-view" onClick={() => handleViewTicketDetails(ticket)}>
+                                👁 View
                               </button>
-                              <button 
-                                className="btn-small btn-danger" 
-                                onClick={() => handleRejectTicket(ticket)}
-                              >
-                                Reject
-                              </button>
-                            </>
-                          ) : (
-                            <button className="btn-small btn-danger" onClick={() => handleDeleteTicket(ticket.id)}>Delete</button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                              {ticket.status === 'OPEN' ? (
+                                <>
+                                  <button className="tkt-btn tkt-btn-approve" onClick={() => handleApproveTicket(ticket)}>
+                                    ✓ Approve
+                                  </button>
+                                  <button className="tkt-btn tkt-btn-reject" onClick={() => handleRejectTicket(ticket)}>
+                                    ✕ Reject
+                                  </button>
+                                </>
+                              ) : (
+                                <button className="tkt-btn tkt-btn-delete" onClick={() => handleDeleteTicket(ticket.id)}>
+                                  🗑 Delete
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
                   ) : (
-                    <tr><td colSpan="7" className="text-center">No tickets found</td></tr>
+                    <tr>
+                      <td colSpan="8">
+                        <div className="tkt-empty">
+                          <div className="tkt-empty-icon">🎫</div>
+                          <p className="tkt-empty-title">No tickets found</p>
+                          <p className="tkt-empty-sub">Try changing the status filter above</p>
+                        </div>
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
@@ -737,13 +1114,21 @@ const AdminDashboard = () => {
           </div>
         )}
 
+
         {/* Resources Tab */}
         {activeTab === 'resources' && (
           <div className="admin-section">
             <h2>Resource Management</h2>
-            
+
             <div className="admin-form">
               <h3>{isEditingResource ? 'Edit Resource' : 'Add New Resource'}</h3>
+              {formErrors.length > 0 && (
+                <div className="form-errors" style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '10px', borderRadius: '4px', marginBottom: '15px' }}>
+                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                    {formErrors.map((err, i) => <li key={i}>{err}</li>)}
+                  </ul>
+                </div>
+              )}
               <form onSubmit={handleSaveResource}>
                 <div className="form-row">
                   <div className="form-group">
@@ -751,7 +1136,7 @@ const AdminDashboard = () => {
                     <input
                       type="text"
                       value={resourceForm.name}
-                      onChange={(e) => setResourceForm({...resourceForm, name: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, name: e.target.value })}
                       placeholder="e.g., Meeting Room A"
                     />
                   </div>
@@ -759,7 +1144,7 @@ const AdminDashboard = () => {
                     <label>Type</label>
                     <select
                       value={resourceForm.type}
-                      onChange={(e) => setResourceForm({...resourceForm, type: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, type: e.target.value })}
                     >
                       <option value="">Select Type</option>
                       {RESOURCE_TYPES.map(type => (
@@ -774,7 +1159,7 @@ const AdminDashboard = () => {
                     <input
                       type="text"
                       value={resourceForm.location}
-                      onChange={(e) => setResourceForm({...resourceForm, location: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, location: e.target.value })}
                       placeholder="e.g., Building A, Floor 2"
                     />
                   </div>
@@ -782,7 +1167,7 @@ const AdminDashboard = () => {
                     <label>Description</label>
                     <textarea
                       value={resourceForm.description}
-                      onChange={(e) => setResourceForm({...resourceForm, description: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, description: e.target.value })}
                       placeholder="Optional description"
                       rows="2"
                     />
@@ -794,7 +1179,7 @@ const AdminDashboard = () => {
                     <input
                       type="number"
                       value={resourceForm.capacity}
-                      onChange={(e) => setResourceForm({...resourceForm, capacity: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, capacity: e.target.value })}
                       placeholder="e.g., 20"
                     />
                   </div>
@@ -802,7 +1187,7 @@ const AdminDashboard = () => {
                     <label>Status</label>
                     <select
                       value={resourceForm.status}
-                      onChange={(e) => setResourceForm({...resourceForm, status: e.target.value})}
+                      onChange={(e) => setResourceForm({ ...resourceForm, status: e.target.value })}
                     >
                       <option value="ACTIVE">Active</option>
                       <option value="OUT_OF_SERVICE">Out of Service</option>
@@ -811,17 +1196,58 @@ const AdminDashboard = () => {
                     </select>
                   </div>
                 </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Weekday Open Time</label>
+                    <input
+                      type="datetime-local"
+                      min={minDateTime}
+                      value={resourceForm.weekdayOpenTime || ''}
+                      onChange={(e) => handleDateChange('weekdayOpenTime', e.target.value, false)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Weekday Close Time</label>
+                    <input
+                      type="datetime-local"
+                      min={minDateTime}
+                      value={resourceForm.weekdayCloseTime || ''}
+                      onChange={(e) => handleDateChange('weekdayCloseTime', e.target.value, false)}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Weekend Open Time</label>
+                    <input
+                      type="datetime-local"
+                      min={minDateTime}
+                      value={resourceForm.weekendOpenTime || ''}
+                      onChange={(e) => handleDateChange('weekendOpenTime', e.target.value, true)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Weekend Close Time</label>
+                    <input
+                      type="datetime-local"
+                      min={minDateTime}
+                      value={resourceForm.weekendCloseTime || ''}
+                      onChange={(e) => handleDateChange('weekendCloseTime', e.target.value, true)}
+                    />
+                  </div>
+                </div>
                 <div className="form-actions">
                   <button type="submit" className="btn btn-success">
                     {isEditingResource ? 'Update Resource' : 'Add Resource'}
                   </button>
                   {isEditingResource && (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       className="btn btn-secondary"
                       onClick={() => {
-                        setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE' });
+                        setResourceForm({ id: null, name: '', type: '', location: '', description: '', capacity: '', status: 'ACTIVE', weekdayOpenTime: '', weekdayCloseTime: '', weekendOpenTime: '', weekendCloseTime: '' });
                         setIsEditingResource(false);
+                        setFormErrors([]);
                       }}
                     >
                       Cancel
@@ -832,7 +1258,7 @@ const AdminDashboard = () => {
             </div>
 
             <div className="admin-table">
-              <p style={{color: '#666', fontSize: '12px', marginBottom: '10px'}}>Total Resources: <strong>{resources.length}</strong></p>
+              <p style={{ color: '#666', fontSize: '12px', marginBottom: '10px' }}>Total Resources: <strong>{resources.length}</strong></p>
               <table>
                 <thead>
                   <tr>
@@ -841,7 +1267,7 @@ const AdminDashboard = () => {
                     <th>Type</th>
                     <th>Location</th>
                     <th>Capacity</th>
-                    <th>Description</th>
+                    <th>Availability</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -855,10 +1281,30 @@ const AdminDashboard = () => {
                         <td>{resource.type}</td>
                         <td>{resource.location || 'N/A'}</td>
                         <td>{resource.capacity || 'N/A'}</td>
-                        <td>{resource.description || 'N/A'}</td>
+                        <td>
+                          {resource.weekdayOpenTime || resource.weekendOpenTime ? (
+                            <div style={{ fontSize: '0.85em', lineHeight: '1.4' }}>
+                              {resource.weekdayOpenTime && resource.weekdayCloseTime && (
+                                <div><strong style={{ fontWeight: 500 }}>Wd:</strong> {formatTime(resource.weekdayOpenTime)} - {formatTime(resource.weekdayCloseTime)}</div>
+                              )}
+                              {resource.weekendOpenTime && resource.weekendCloseTime && (
+                                <div><strong style={{ fontWeight: 500 }}>We:</strong> {formatTime(resource.weekendOpenTime)} - {formatTime(resource.weekendCloseTime)}</div>
+                              )}
+                            </div>
+                          ) : (
+                            'N/A'
+                          )}
+                        </td>
                         <td><span className={`status ${resource.status?.toLowerCase()}`}>{resource.status}</span></td>
                         <td>
                           <button className="btn-small btn-primary" onClick={() => handleEditResource(resource)}>Edit</button>
+                          <button 
+                            className={`btn-small ${resource.status === 'ACTIVE' ? 'btn-warning' : 'btn-success'}`}
+                            onClick={() => handleToggleResourceStatus(resource)}
+                            disabled={loading}
+                          >
+                            {resource.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                          </button>
                           <button className="btn-small btn-danger" onClick={() => handleDeleteResource(resource.id)}>Delete</button>
                           <button className="btn-small btn-qr" onClick={() => setQrResource(resource)} title="Print QR Code for this resource">🖨️ Print QR</button>
                         </td>
@@ -869,6 +1315,89 @@ const AdminDashboard = () => {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Notifications Tab */}
+        {activeTab === 'notifications' && (
+          <div className="admin-section">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2>System Notifications</h2>
+              {unreadNotificationsCount > 0 && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={async () => {
+                    try {
+                      await notificationAPI.markAllAsRead(user?.id || user?.email);
+                      setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+                      setUnreadNotificationsCount(0);
+                    } catch (e) {
+                      console.error('Failed to mark all as read', e);
+                    }
+                  }}
+                >
+                  Mark All as Read
+                </button>
+              )}
+            </div>
+
+            <div className="notifications-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {notifications.length > 0 ? (
+                [...notifications]
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`notification-card ${!notification.isRead ? 'unread' : ''}`}
+                      style={{
+                        padding: '15px',
+                        backgroundColor: notification.isRead ? '#f8f9fa' : '#e3f2fd',
+                        borderLeft: `4px solid ${notification.isRead ? '#ccc' : '#0056b3'}`,
+                        borderRadius: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '5px',
+                        cursor: 'pointer'
+                      }}
+                      onClick={async () => {
+                        if (!notification.isRead) {
+                          try {
+                            await notificationAPI.markAsRead(notification.id);
+                            setNotifications(notifications.map(n =>
+                              n.id === notification.id ? { ...n, isRead: true } : n
+                            ));
+                            setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
+                          } catch (e) {
+                            console.error('Failed to mark as read', e);
+                          }
+                        }
+
+                        // Navigate based on type
+                        if (notification.type.includes('TICKET')) {
+                          setActiveTab('tickets');
+                        } else if (notification.type.includes('BOOKING')) {
+                          setActiveTab('bookings');
+                        }
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <strong style={{ fontSize: '1.1em' }}>{notification.title}</strong>
+                        <span style={{ fontSize: '0.85em', color: '#666' }}>
+                          {new Date(notification.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, color: '#444' }}>{notification.message}</p>
+                      <span style={{ fontSize: '0.8em', color: '#888', fontWeight: 'bold' }}>
+                        {notification.type.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  ))
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                  <p style={{ color: '#6c757d', margin: 0 }}>No notifications found.</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -918,6 +1447,129 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+      {/* Resource Modals and Other Content... */}
+      {/* Ticket Details Modal */}
+      {showTicketDetails && ticketDetails && (
+        <div className="modal-overlay" onClick={() => setShowTicketDetails(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{ticketDetails.title}</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowTicketDetails(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              <div className="detail-row" style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
+                <div className="detail-field">
+                  <label style={{ fontWeight: 'bold' }}>Status</label>
+                  <div><span className={`status ${ticketDetails.status?.toLowerCase()}`}>{ticketDetails.status}</span></div>
+                </div>
+                <div className="detail-field">
+                  <label style={{ fontWeight: 'bold' }}>Priority</label>
+                  <div><span className={`priority ${ticketDetails.priority?.toLowerCase()}`}>{ticketDetails.priority}</span></div>
+                </div>
+                <div className="detail-field">
+                  <label style={{ fontWeight: 'bold' }}>Category</label>
+                  <div><span>{ticketDetails.category}</span></div>
+                </div>
+              </div>
+
+              <div className="detail-section" style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Description</label>
+                <p className="description-text">{ticketDetails.description}</p>
+              </div>
+
+              {/* Attached Images */}
+              {ticketAttachments.length > 0 && (
+                <div className="detail-section" style={{ marginBottom: '15px' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
+                    🖼 Attached Images ({ticketAttachments.length})
+                  </label>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    {ticketAttachments.map((att) => {
+                      return (
+                        <div key={att.id} style={{ textAlign: 'center' }}>
+                          <img
+                            src={att.fileData ? `data:${att.fileType || 'image/jpeg'};base64,${att.fileData}` : `${API_BASE_URL}${att.fileUrl}`}
+                            alt={att.fileName}
+                            style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}
+                            onClick={() => {
+                              const newTab = window.open();
+                              newTab.document.body.innerHTML = `<img src="${att.fileData ? `data:${att.fileType || 'image/jpeg'};base64,${att.fileData}` : `${API_BASE_URL}${att.fileUrl}`}" style="max-width: 100%;">`;
+                            }}
+                            title={att.fileName}
+                          />
+                          <div style={{ fontSize: '0.75em', color: '#666', marginTop: '4px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.fileName}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="detail-section" style={{ marginTop: '20px' }}>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Comments ({ticketComments.length})</label>
+                {ticketComments.length > 0 ? (
+                  <ul className="ticket-comment-list" style={{ listStyle: 'none', padding: 0, margin: '10px 0' }}>
+                    {ticketComments.map((comment) => (
+                      <li key={comment.id || `${comment.userId}-${comment.createdAt}`} style={{ padding: '10px', backgroundColor: '#f9f9f9', borderLeft: '3px solid #0056b3', marginBottom: '8px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <p style={{ margin: '0 0 5px 0', fontSize: '0.85em', color: '#666' }}>
+                            <strong>{comment.userName || comment.userEmail || 'Unknown'}</strong> - {new Date(comment.createdAt).toLocaleString()}
+                          </p>
+                          <p style={{ margin: 0 }}>{comment.content}</p>
+                        </div>
+                        {comment.userId === user?.id && (
+                          <button onClick={() => handleDeleteComment(comment.id)} style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em' }}>
+                            Delete
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ color: '#888', fontStyle: 'italic', margin: '10px 0' }}>No comments for this ticket.</p>
+                )}
+
+                {ticketDetails.status !== 'CLOSED' && ticketDetails.status !== 'RESOLVED' ? (
+                  <form onSubmit={handleAddComment} style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Add a new comment..."
+                      disabled={commentLoading}
+                      required
+                      style={{ padding: '0.5rem', minHeight: '80px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical' }}
+                    />
+                    <button type="submit" className="btn btn-primary" disabled={commentLoading || !newComment.trim()} style={{ alignSelf: 'flex-start' }}>
+                      {commentLoading ? 'Adding...' : 'Add Comment'}
+                    </button>
+                  </form>
+                ) : (
+                  <div style={{ marginTop: '1rem', padding: '10px', backgroundColor: '#e9ecef', borderRadius: '4px', textAlign: 'center', color: '#6c757d' }}>
+                    This ticket is closed. New comments cannot be added.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowTicketDetails(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

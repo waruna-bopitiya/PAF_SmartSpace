@@ -20,6 +20,62 @@
   font-size: 15px;
 }
 
+.technician-panel-tabs {
+  display: flex;
+  gap: 24px;
+  margin: 0 0 24px 0;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.technician-panel-tabs::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+.technician-panel-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  padding: 0 4px 12px 4px;
+  border-radius: 0;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: -1px; /* Overlap with the container's bottom border */
+}
+
+.technician-panel-tab.active {
+  background: transparent;
+  color: #0f766e;
+  border-bottom-color: #0f766e;
+  font-weight: 600;
+}
+
+.technician-panel-tab:hover {
+  color: #0f172a;
+  border-bottom-color: #cbd5e1;
+  transform: none;
+}
+
+.technician-notification-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ef4444;
+  color: white;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: 6px;
+  padding: 0 5px;
+}
+
 .technician-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -257,5 +313,27 @@
 @media (max-width: 768px) {
   .technician-dashboard-container {
     padding: 14px;
+  }
+
+  .technician-dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .technician-panel-tabs {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .technician-panel-tab {
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .technician-notifications-header,
+  .technician-notification-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

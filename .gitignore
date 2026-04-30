@@ -42,8 +42,8 @@ yarn-error.log*
 .pnp.js
 
 # --- Java / Maven Specific ---
-target/
-/backend/target/
+
+
 *.class
 *.jar
 *.war
