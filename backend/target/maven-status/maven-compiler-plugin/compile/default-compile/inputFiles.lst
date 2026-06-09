@@ -22,6 +22,7 @@ G:\PROJECTS\PAF_SmartSpace\backend\src\main\java\com\smartcampus\model\Booking.j
 G:\PROJECTS\PAF_SmartSpace\backend\src\main\java\com\smartcampus\security\SecurityConfig.java
 G:\PROJECTS\PAF_SmartSpace\backend\src\main\java\com\smartcampus\controller\AuthController.java
 G:\PROJECTS\PAF_SmartSpace\backend\src\main\java\com\smartcampus\model\Ticket.java
+G:\PROJECTS\PAF_SmartSpace\backend\src\main\java\com\smartcampus\service\QRCodeService.java
 G:\PROJECTS\PAF_SmartSpace\backend\src\main\java\com\smartcampus\security\OAuth2SuccessHandler.java
 G:\PROJECTS\PAF_SmartSpace\backend\src\main\java\com\smartcampus\dto\CommentDTO.java
 G:\PROJECTS\PAF_SmartSpace\backend\src\main\java\com\smartcampus\model\TicketStatus.java

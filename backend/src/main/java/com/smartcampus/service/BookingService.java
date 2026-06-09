@@ -1,25 +1,25 @@
 package com.smartcampus.service;
 
-import com.smartcampus.exception.BookingConflictException;
-import com.smartcampus.exception.ResourceNotFoundException;
-import com.smartcampus.model.Booking;
-import com.smartcampus.model.BookingStatus;
-import com.smartcampus.model.Notification;
-import com.smartcampus.model.NotificationType;
-import com.smartcampus.repository.BookingRepository;
-import com.smartcampus.repository.UserRepository;
-import com.smartcampus.model.User;
-import com.smartcampus.model.UserRole;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+
+import com.smartcampus.exception.BookingConflictException;
+import com.smartcampus.exception.ResourceNotFoundException;
+import com.smartcampus.model.Booking;
+import com.smartcampus.model.BookingStatus;
+import com.smartcampus.model.NotificationType;
+import com.smartcampus.model.User;
+import com.smartcampus.model.UserRole;
+import com.smartcampus.repository.BookingRepository;
+import com.smartcampus.repository.UserRepository;
 
 @Service
 public class BookingService {
@@ -32,6 +32,9 @@ public class BookingService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private QRCodeService qrCodeService;
 
     /**
      * Get all bookings with pagination
@@ -144,6 +147,11 @@ public class BookingService {
             booking.setStatus(BookingStatus.PENDING);
             
             Booking savedBooking = bookingRepository.save(booking);
+            
+            // Generate QR code for the booking
+            String qrCode = qrCodeService.generateQRCodeFromBooking(savedBooking);
+            savedBooking.setQrCode(qrCode);
+            savedBooking = bookingRepository.save(savedBooking);
             
             // Notify Admins
             List<User> admins = userRepository.findByRole(UserRole.ADMIN);

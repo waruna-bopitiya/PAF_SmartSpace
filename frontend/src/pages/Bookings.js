@@ -74,6 +74,8 @@ const Bookings = () => {
   };
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedBookingQR, setSelectedBookingQR] = useState(null);
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -249,6 +251,126 @@ const Bookings = () => {
       REJECTED: 'danger',
       CANCELLED: 'secondary',
     }[status] || 'secondary';
+  };
+
+  const handleShowQRCode = async (booking) => {
+    try {
+      // Log the booking object for debugging
+      console.log('=== QR Code Debug ===');
+      console.log('Full booking object:', booking);
+      console.log('booking.id:', booking.id);
+      console.log('booking._id:', booking._id);
+      
+      // Get booking ID (handle both _id and id formats)
+      const bookingId = booking.id || booking._id;
+      console.log('Using bookingId:', bookingId);
+      
+      if (!bookingId) {
+        throw new Error('Booking ID is missing. Unable to fetch QR code.');
+      }
+      
+      // Fetch QR code if not already present
+      if (!booking.qrCode) {
+        console.log('API call: GET /bookings/' + bookingId + '/qr-code');
+        const response = await bookingAPI.getQRCode(bookingId);
+        console.log('QR code response received:', response.data);
+        booking.qrCode = response.data.qrCode;
+      } else {
+        console.log('QR code already present, using cached value');
+      }
+      
+      // Ensure booking has the ID field set
+      if (!booking.id && booking._id) {
+        booking.id = booking._id;
+      }
+      
+      console.log('Setting selected booking QR:', booking);
+      setSelectedBookingQR(booking);
+      setShowQRModal(true);
+    } catch (error) {
+      console.error('=== Error fetching QR code ===');
+      console.error('Error message:', error.message);
+      console.error('Error object:', error);
+      console.error('Response status:', error.response?.status);
+      console.error('Response data:', error.response?.data);
+      console.error('Request URL:', error.config?.url);
+      console.error('Request headers:', error.config?.headers);
+      
+      // More specific error messages
+      let errorMessage = 'Failed to load QR code. Please try again.';
+      if (error.response?.status === 401) {
+        errorMessage = 'Unauthorized. Please log in again.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Booking not found. It may have been deleted.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      setError(errorMessage);
+    }
+  };
+
+  const handleDownloadQRCode = () => {
+    if (!selectedBookingQR?.qrCode) return;
+
+    // Create a link element and trigger download
+    const link = document.createElement('a');
+    link.href = selectedBookingQR.qrCode;
+    link.download = `booking-${selectedBookingQR.id}-qr.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintQRCode = () => {
+    if (!selectedBookingQR?.qrCode) return;
+
+    // Open print dialog
+    const printWindow = window.open('', '', 'width=600,height=600');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Booking QR Code - ${selectedBookingQR.id}</title>
+          <style>
+            body {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+              padding: 20px;
+              font-family: Arial, sans-serif;
+            }
+            .qr-container {
+              text-align: center;
+              background: white;
+              padding: 30px;
+              border-radius: 10px;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            img {
+              max-width: 400px;
+              margin: 20px 0;
+            }
+            h2 { color: #333; margin: 10px 0; }
+            p { color: #666; margin: 5px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="qr-container">
+            <h2>Booking QR Code</h2>
+            <img src="${selectedBookingQR.qrCode}" alt="QR Code" />
+            <p>Booking ID: ${selectedBookingQR.id}</p>
+            <p>Resource: ${selectedBookingQR.resourceId}</p>
+            <p>Date: ${new Date(selectedBookingQR.startTime).toLocaleDateString()}</p>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 250);
   };
 
   if (loading) {
@@ -444,14 +566,23 @@ const Bookings = () => {
                       </span>
                     </td>
                     <td>
-                      {booking.status === 'PENDING' && (
+                      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                         <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleCancel(booking._id)}
+                          className="btn btn-sm btn-info"
+                          onClick={() => handleShowQRCode(booking)}
+                          title="View QR Code"
                         >
-                          Cancel
+                          📱 QR Code
                         </button>
-                      )}
+                        {booking.status === 'PENDING' && (
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleCancel(booking._id || booking.id)}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -460,6 +591,96 @@ const Bookings = () => {
           </div>
         ) : (
           <p>No bookings yet. Create your first booking!</p>
+        )}
+
+        {/* QR Code Modal */}
+        {showQRModal && selectedBookingQR && (
+          <div className="modal-overlay" onClick={() => setShowQRModal(false)}>
+            <div className="modal-content qr-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h4>Booking QR Code</h4>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={() => setShowQRModal(false)}
+                  aria-label="Close"
+                >
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div className="modal-body" style={{ textAlign: 'center' }}>
+                {selectedBookingQR.qrCode ? (
+                  <>
+                    <img
+                      src={selectedBookingQR.qrCode}
+                      alt="Booking QR Code"
+                      style={{ maxWidth: '300px', width: '100%', marginBottom: '20px' }}
+                    />
+                    <div className="booking-details" style={{ marginBottom: '20px', textAlign: 'left' }}>
+                      <p><strong>Booking ID:</strong> {selectedBookingQR.id || selectedBookingQR._id}</p>
+                      <p><strong>Resource:</strong> {selectedBookingQR.resourceId}</p>
+                      <p>
+                        <strong>Date:</strong> {new Date(selectedBookingQR.startTime).toLocaleDateString()}
+                      </p>
+                      <p>
+                        <strong>Time:</strong> {new Date(selectedBookingQR.startTime).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })} - {new Date(selectedBookingQR.endTime).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                      <p><strong>Status:</strong> <span className={`badge badge-${getStatusColor(selectedBookingQR.status)}`}>
+                        {selectedBookingQR.status}
+                      </span></p>
+                      {selectedBookingQR.qrCodeVerified && (
+                        <p>
+                          <strong>✓ Verified on:</strong> {new Date(selectedBookingQR.qrCodeVerificationTime).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ padding: '20px', textAlign: 'center' }}>
+                    <p style={{ color: '#666', marginBottom: '10px' }}>QR code is being generated...</p>
+                    <div style={{ display: 'inline-block', padding: '20px' }}>
+                      <div style={{ 
+                        width: '40px', 
+                        height: '40px', 
+                        border: '4px solid #f3f3f3',
+                        borderTop: '4px solid #3498db',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }}></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn btn-primary"
+                  onClick={handleDownloadQRCode}
+                  disabled={!selectedBookingQR.qrCode}
+                >
+                  📥 Download
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePrintQRCode}
+                  disabled={!selectedBookingQR.qrCode}
+                >
+                  🖨️ Print
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowQRModal(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -6,6 +6,7 @@ com\smartcampus\repository\TicketRepository.class
 com\smartcampus\service\FileUploadService.class
 com\smartcampus\dto\ResourceDTO.class
 com\smartcampus\repository\BookingRepository.class
+com\smartcampus\service\QRCodeService.class
 com\smartcampus\model\TicketAttachment.class
 com\smartcampus\repository\ResourceRepository.class
 com\smartcampus\model\NotificationType.class
@@ -18,6 +19,7 @@ com\smartcampus\model\Booking.class
 com\smartcampus\model\UserRole.class
 com\smartcampus\controller\ResourceController.class
 com\smartcampus\service\BookingService$1.class
+com\smartcampus\config\StaticResourceConfig.class
 com\smartcampus\dto\LoginResponse.class
 com\smartcampus\repository\BookingCommentRepository.class
 com\smartcampus\security\JwtAuthenticationEntryPoint.class
@@ -47,6 +49,7 @@ com\smartcampus\repository\TicketAttachmentRepository.class
 com\smartcampus\service\TicketService.class
 com\smartcampus\controller\BookingController.class
 com\smartcampus\model\User.class
+com\smartcampus\service\QRCodeService$QRCodeData.class
 com\smartcampus\dto\LoginRequest.class
 com\smartcampus\exception\ResourceNotFoundException.class
 com\smartcampus\model\TicketComment.class

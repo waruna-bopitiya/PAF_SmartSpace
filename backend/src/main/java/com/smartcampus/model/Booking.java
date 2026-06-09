@@ -40,6 +40,12 @@ public class Booking {
 
     private List<String> commentIds = new ArrayList<>();
 
+    private String qrCode; // Base64 encoded QR code image
+
+    private boolean qrCodeVerified = false;
+
+    private LocalDateTime qrCodeVerificationTime;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
@@ -94,6 +100,12 @@ public class Booking {
     public void setApprovalDate(LocalDateTime approvalDate) { this.approvalDate = approvalDate; }
     public List<String> getCommentIds() { return commentIds; }
     public void setCommentIds(List<String> commentIds) { this.commentIds = commentIds; }
+    public String getQrCode() { return qrCode; }
+    public void setQrCode(String qrCode) { this.qrCode = qrCode; }
+    public boolean isQrCodeVerified() { return qrCodeVerified; }
+    public void setQrCodeVerified(boolean qrCodeVerified) { this.qrCodeVerified = qrCodeVerified; }
+    public LocalDateTime getQrCodeVerificationTime() { return qrCodeVerificationTime; }
+    public void setQrCodeVerificationTime(LocalDateTime qrCodeVerificationTime) { this.qrCodeVerificationTime = qrCodeVerificationTime; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -129,6 +129,13 @@ export const bookingAPI = {
     apiClient.put(`/bookings/${id}/cancel`, null, { params: { reason } }),
   delete: (id) =>
     apiClient.delete(`/bookings/${id}`),
+  // QR Code endpoints
+  getQRCode: (id) =>
+    apiClient.get(`/bookings/${id}/qr-code`),
+  verifyQRCode: (qrData) =>
+    apiClient.post('/bookings/verify-qr', { qrData }),
+  getVerificationStatus: (id) =>
+    apiClient.get(`/bookings/${id}/verification-status`),
 };
 
 // ===== TICKET ENDPOINTS =====

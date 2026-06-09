@@ -1,11 +1,9 @@
 package com.smartcampus.controller;
 
-import com.smartcampus.dto.BookingDTO;
-import com.smartcampus.exception.BookingConflictException;
-import com.smartcampus.model.Booking;
-import com.smartcampus.model.BookingStatus;
-import com.smartcampus.service.BookingService;
-import jakarta.validation.Valid;  
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+  
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -13,10 +11,25 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.smartcampus.dto.BookingDTO;
+import com.smartcampus.exception.BookingConflictException;
+import com.smartcampus.model.Booking;
+import com.smartcampus.service.BookingService;
+import com.smartcampus.service.QRCodeService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/bookings")
@@ -28,6 +41,9 @@ public class BookingController {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private QRCodeService qrCodeService;
 
     /**
      * Get all bookings with pagination
@@ -152,7 +168,6 @@ public class BookingController {
                     .body(java.util.Map.of("error", e.getMessage()));
         } catch (Exception e) {
             System.err.println("Error creating booking: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(java.util.Map.of("error", "Failed to create booking: " + e.getMessage()));
         }
@@ -265,6 +280,112 @@ public class BookingController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error fetching resource bookings: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get QR code for a booking
+     * GET /bookings/{id}/qr-code
+     */
+    @GetMapping("/{id}/qr-code")
+    public ResponseEntity<?> getQRCode(@PathVariable String id) {
+        try {
+            System.out.println("[QR Code API] Received request for booking ID: " + id);
+            
+            Booking booking = bookingService.getBookingById(id);
+            System.out.println("[QR Code API] Booking found: " + booking.getId());
+            
+            if (booking.getQrCode() == null) {
+                System.out.println("[QR Code API] QR code not present, generating...");
+                // Generate QR code if not already generated
+                String qrCode = qrCodeService.generateQRCodeFromBooking(booking);
+                booking.setQrCode(qrCode);
+                booking.onUpdate();
+                bookingService.updateBooking(id, booking);
+                System.out.println("[QR Code API] QR code generated successfully");
+            } else {
+                System.out.println("[QR Code API] QR code already exists, returning cached version");
+            }
+            
+            System.out.println("[QR Code API] Returning QR code response");
+            return ResponseEntity.ok(java.util.Map.of("qrCode", booking.getQrCode()));
+        } catch (Exception e) {
+            System.err.println("[QR Code API] Error: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(java.util.Map.of("error", "Error retrieving QR code: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Verify booking using QR code data
+     * POST /bookings/verify-qr
+     * Request body: { "qrData": "BOOKING_VERIFY|bookingId|resourceId|userId" }
+     */
+    @PostMapping("/verify-qr")
+    public ResponseEntity<?> verifyQRCode(@RequestBody java.util.Map<String, String> requestBody) {
+        try {
+            String qrData = requestBody.get("qrData");
+            if (qrData == null || qrData.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(java.util.Map.of("error", "QR data is required"));
+            }
+
+            // Verify the QR code
+            QRCodeService.QRCodeData qrCodeData = qrCodeService.verifyQRCode(qrData);
+            if (qrCodeData == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(java.util.Map.of("error", "Invalid QR code format"));
+            }
+
+            // Get the booking
+            Booking booking = bookingService.getBookingById(qrCodeData.getBookingId());
+            
+            // Verify the booking details match
+            if (!booking.getResourceId().equals(qrCodeData.getResourceId()) || 
+                !booking.getUserId().equals(qrCodeData.getUserId())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(java.util.Map.of("error", "QR code does not match booking details"));
+            }
+
+            // Mark as verified (only if not already verified)
+            if (!booking.isQrCodeVerified()) {
+                booking.setQrCodeVerified(true);
+                booking.setQrCodeVerificationTime(LocalDateTime.now());
+                booking.onUpdate();
+                bookingService.updateBooking(booking.getId(), booking);
+            }
+
+            BookingDTO responseDTO = modelMapper.map(booking, BookingDTO.class);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "message", "Booking verified successfully",
+                    "booking", responseDTO,
+                    "verified", true,
+                    "verificationTime", booking.getQrCodeVerificationTime()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("error", "Error verifying QR code: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get verification status of a booking
+     * GET /bookings/{id}/verification-status
+     */
+    @GetMapping("/{id}/verification-status")
+    public ResponseEntity<?> getVerificationStatus(@PathVariable String id) {
+        try {
+            Booking booking = bookingService.getBookingById(id);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "bookingId", booking.getId(),
+                    "verified", booking.isQrCodeVerified(),
+                    "verificationTime", booking.getQrCodeVerificationTime(),
+                    "status", booking.getStatus()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(java.util.Map.of("error", "Booking not found: " + e.getMessage()));
         }
     }
 }

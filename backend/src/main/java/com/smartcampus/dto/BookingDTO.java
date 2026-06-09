@@ -1,10 +1,14 @@
 package com.smartcampus.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.smartcampus.model.BookingStatus;
-import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class BookingDTO {
     private String id;
@@ -44,6 +48,13 @@ public class BookingDTO {
     private LocalDateTime approvalDate;
 
     private List<String> commentIds;
+
+    private String qrCode;
+
+    private boolean qrCodeVerified;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime qrCodeVerificationTime;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
@@ -103,6 +114,12 @@ public class BookingDTO {
     public void setApprovalDate(LocalDateTime approvalDate) { this.approvalDate = approvalDate; }
     public List<String> getCommentIds() { return commentIds; }
     public void setCommentIds(List<String> commentIds) { this.commentIds = commentIds; }
+    public String getQrCode() { return qrCode; }
+    public void setQrCode(String qrCode) { this.qrCode = qrCode; }
+    public boolean isQrCodeVerified() { return qrCodeVerified; }
+    public void setQrCodeVerified(boolean qrCodeVerified) { this.qrCodeVerified = qrCodeVerified; }
+    public LocalDateTime getQrCodeVerificationTime() { return qrCodeVerificationTime; }
+    public void setQrCodeVerificationTime(LocalDateTime qrCodeVerificationTime) { this.qrCodeVerificationTime = qrCodeVerificationTime; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { userAPI, bookingAPI, ticketAPI, resourceAPI, notificationAPI, API_BASE_URL } from '../services/api';
 import ResourceQRPrint from './ResourceQRPrint';
+import QRVerification from './QRVerification';
 import { RESOURCE_TYPES, formatResourceType } from '../config/resourceTypes';
 import '../styles/AdminDashboard.css';
 
@@ -615,6 +616,12 @@ const AdminDashboard = () => {
                 {unreadNotificationsCount}
               </span>
             )}
+          </button>
+          <button
+            className={`admin-nav-btn ${activeTab === 'qr-verification' ? 'active' : ''}`}
+            onClick={() => setActiveTab('qr-verification')}
+          >
+            🔍 QR Verification
           </button>
         </div>
 
@@ -1448,6 +1455,11 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* QR Verification Tab */}
+      {activeTab === 'qr-verification' && (
+        <QRVerification />
       )}
 
     </div>
