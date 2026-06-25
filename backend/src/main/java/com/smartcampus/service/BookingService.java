@@ -6,6 +6,10 @@ import com.smartcampus.model.Booking;
 import com.smartcampus.model.BookingStatus;
 import com.smartcampus.model.Notification;
 import com.smartcampus.model.NotificationType;
+import com.smartcampus.model.Resource;
+import com.smartcampus.model.ResourceStatus;
+import com.smartcampus.model.User;
+import com.smartcampus.model.UserRole;
 import com.smartcampus.repository.BookingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -14,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class BookingService {
@@ -23,6 +28,12 @@ public class BookingService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private ResourceService resourceService;
+
+    @Autowired
+    private UserService userService;
 
     /**
      * Get all bookings with pagination
@@ -110,6 +121,50 @@ public class BookingService {
             booking.setStatus(BookingStatus.PENDING);
             
             Booking savedBooking = bookingRepository.save(booking);
+
+            // Alert if the booked resource is in a troubled state (OUT_OF_SERVICE or MAINTENANCE)
+            try {
+                Resource resource = resourceService.getResourceById(savedBooking.getResourceId());
+                if (resource.getStatus() == ResourceStatus.OUT_OF_SERVICE
+                        || resource.getStatus() == ResourceStatus.MAINTENANCE) {
+
+                    String resourceName = resource.getName() != null ? resource.getName() : savedBooking.getResourceId();
+                    String statusLabel = resource.getStatus() == ResourceStatus.OUT_OF_SERVICE
+                            ? "out of service" : "under maintenance";
+
+                    // Notify the booking user
+                    notificationService.createNotification(
+                            savedBooking.getUserId(),
+                            savedBooking.getId(),
+                            "Booking",
+                            NotificationType.TROUBLED_RESOURCE_BOOKING,
+                            "⚠️ Booking on a Troubled Resource",
+                            "You have booked '" + resourceName + "' which is currently " + statusLabel
+                                    + ". Your booking is pending admin review."
+                    );
+
+                    // Notify all admins
+                    List<String> adminIds = userService.getUsersByRole(UserRole.ADMIN)
+                            .stream()
+                            .map(User::getId)
+                            .collect(Collectors.toList());
+
+                    notificationService.broadcastNotification(
+                            adminIds,
+                            savedBooking.getId(),
+                            "Booking",
+                            NotificationType.TROUBLED_RESOURCE_BOOKING,
+                            "⚠️ Child Booked a Troubled Resource",
+                            "A user (ID: " + savedBooking.getUserId() + ") has booked '" + resourceName
+                                    + "' which is currently " + statusLabel + ". Please review booking ID: "
+                                    + savedBooking.getId() + "."
+                    );
+                }
+            } catch (Exception alertEx) {
+                // Do not fail the booking if the alert itself throws
+                // Log this in a real system: log.warn("Failed to send troubled-resource alert", alertEx);
+            }
+
             return savedBooking;
         } catch (BookingConflictException e) {
             throw e;
